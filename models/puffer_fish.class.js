@@ -17,11 +17,26 @@ class PufferFish extends Enemy {
     }
 
     update(dt) {
-        // move horizontally according to vx
-        const speedPxPerSec = (this.speed || 1) * 60 * 0.7;
-        this.x += this.vx * speedPxPerSec * (dt / 1000);
-    // face movement direction
-    if (this.vx < 0) this.flipX = false; else if (this.vx > 0) this.flipX = true;
+        // move horizontally according to vx and this enemy's speedFactor so enemies vary
+        try {
+            let charSpeed = (this.speed || 1);
+            if (typeof window !== 'undefined' && window.world && window.world.character && typeof window.world.character.speed === 'number') {
+                charSpeed = window.world.character.speed;
+            }
+            const effectiveFactor = Math.min((typeof this.speedFactor === 'number' ? this.speedFactor : 1.0), 1.0);
+            const speedPxPerSec = charSpeed * 60 * effectiveFactor; // px/sec
+            const moveAmount = speedPxPerSec * (dt / 1000);
+            this.x += this.vx * moveAmount;
+            // store actual speed for animation timing/debug overlay
+            this._currentSpeed = Math.abs((this.vx || 0) * speedPxPerSec);
+        } catch (err) {
+            // fallback to previous fixed movement if anything goes wrong
+            const speedPxPerSec = (this.speed || 1) * 60 * 0.7;
+            this.x += this.vx * speedPxPerSec * (dt / 1000);
+            this._currentSpeed = Math.abs((this.vx || 0) * speedPxPerSec);
+        }
+        // face movement direction
+        if (this.vx < 0) this.flipX = false; else if (this.vx > 0) this.flipX = true;
         // remove when off-screen fully (add some margin)
         if (this.x + this.width < -50 || this.x > (typeof window !== 'undefined' && window.world ? window.world.canvas.width + 50 : 800)) {
             this._dead = true;

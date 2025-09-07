@@ -10,8 +10,10 @@ class MovableObject {
     // load a single image
     loadImage(path) {
         // create a temporary image and only assign to this.img on successful load
-        const img = new Image();
-        return new Promise((resolve, reject) => {
+    const img = new Image();
+    // set as early fallback so callers can start drawing this image when it completes
+    try { this._firstFramePath = path; this.img = img; } catch (e) {}
+        const p = new Promise((resolve, reject) => {
             img.onload = () => {
                 this.img = img;
                 resolve(this);
@@ -19,6 +21,8 @@ class MovableObject {
             img.onerror = () => reject(new Error('Failed to load ' + path));
             img.src = path;
         });
+        try { if (typeof window !== 'undefined') { window._pendingLoads = window._pendingLoads || []; window._pendingLoads.push(p); } } catch (e) {}
+        return p;
     }
 
     // compute the trimmed bounding box of non-transparent pixels for an Image
@@ -77,12 +81,16 @@ class MovableObject {
         this.frames = [];
         this.frameIndex = 0;
         this.frameInterval = frameInterval;
+    // early-first-frame: remember first path and start loading single-image fallback
+    try { if (Array.isArray(paths) && paths.length > 0) { this._firstFramePath = paths[0]; try { this.img = new Image(); this.img.src = paths[0]; } catch (e) {} } } catch (e) {}
         const loaders = paths.map(p => new Promise((resolve, reject) => {
             const i = new Image();
             i.onload = () => resolve(i);
             i.onerror = () => reject(new Error('Failed to load ' + p));
             i.src = p;
         }));
+        // register loaders globally so callers can wait for all pending loads
+        try { if (typeof window !== 'undefined') { window._pendingLoads = window._pendingLoads || []; window._pendingLoads.push(...loaders); } } catch (e) {}
         return Promise.all(loaders).then(images => {
             this.frames = images;
             this.img = this.frames[0];
@@ -110,6 +118,12 @@ class MovableObject {
         } catch (e) {}
 
         // safer pattern loader: probe sequentially and stop after a few consecutive misses
+        // set an early-first-frame fallback (try first index path) so the game can show a sprite while probing
+        try {
+            const guess = base + patternList[0].replace('{i}', 1);
+            this._firstFramePath = guess;
+            try { this.img = new Image(); this.img.src = guess; } catch (e) {}
+        } catch (e) {}
         const tryLoad = (path) => new Promise((resolve) => {
             const img = new Image();
             img.onload = () => resolve(img);
@@ -117,7 +131,8 @@ class MovableObject {
             img.src = path;
         });
 
-        return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+            const probes = [];
             const frames = [];
             let consecutiveMisses = 0;
             const missStop = 3; // stop after this many consecutive indices with no match
@@ -128,7 +143,10 @@ class MovableObject {
                     const path = base + name;
                     // try load but don't reject on failure
                     // eslint-disable-next-line no-await-in-loop
-                    const img = await tryLoad(path);
+                    const p = tryLoad(path);
+                    try { if (typeof window !== 'undefined') { window._pendingLoads = window._pendingLoads || []; window._pendingLoads.push(p); } } catch (e) {}
+                    probes.push(p);
+                    const img = await p;
                     if (img) {
                         frames.push(img);
                         foundThisIndex = true;
@@ -266,6 +284,26 @@ class MovableObject {
                 }
             }
         } else {
+            // try global asset cache for a first-frame image path before drawing placeholder
+            try {
+                const path = this._firstFramePath;
+                if (path && typeof window !== 'undefined' && window._assetCache && window._assetCache[path] instanceof Image && window._assetCache[path].complete) {
+                    const aimg = window._assetCache[path];
+                    const trim = aimg._trim || { sx: 0, sy: 0, sw: aimg.naturalWidth, sh: aimg.naturalHeight };
+                    const targetW = this.width || trim.sw;
+                    const targetH = this.height || trim.sh;
+                    const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
+                    const dw = Math.max(1, Math.round(trim.sw * scale));
+                    const dh = Math.max(1, Math.round(trim.sh * scale));
+                    const offsetX = Math.round((targetW - dw) / 2);
+                    const offsetY = Math.round((targetH - dh) / 2);
+                    const dx = this.x + offsetX;
+                    const dy = this.y + offsetY;
+                    ctx.drawImage(aimg, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, dw, dh);
+                    this._lastDraw = { x: dx, y: dy, width: dw, height: dh };
+                    return;
+                }
+            } catch (e) {}
             ctx.fillStyle = 'rgba(255,0,0,.25)';
             ctx.fillRect(this.x, this.y, this.width, this.height);
         }

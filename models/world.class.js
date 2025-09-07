@@ -11,20 +11,20 @@ class World {
   character  = new Character();
   enemies    = [];
   // config
-  minEnemies = 10;
+  minEnemies = 15;
   maxEnemies = 25;
   // multiplier to increase spawn counts (set to 2 for approx. double)
-  spawnMultiplier = 1;
+  spawnMultiplier = 2;
   // maximum enemies that can be spawned per second (rate limit)
-  spawnRateMaxPerSec = 6;
+  spawnRateMaxPerSec = 5;
   // internal rate window
   _spawnWindowStart = Date.now();
   _spawnedInWindow = 0;
   spawnSide = 'random';
   bossActive = false;
-  score = 1000;
+  score = 2000;
   _spawnTimer = 0;
-  _spawnInterval = 300; // ms between spawn attempts when below desired (halved to double spawn rate)
+  _spawnInterval = 500; // ms between spawn attempts when below desired (halved to double spawn rate)
   bubbles = [];
   enemiesEaten = 0;
 
@@ -33,17 +33,37 @@ class World {
   victory = false;
   _victoryStart = 0;
 
-  constructor(canvas) {
+  constructor(canvas, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this._lastTick = Date.now();
-    this.running = true;
-  // create BackgroundObject instances with derived dark paths
+    this.running = false; // start only when start() called
+    this._autoStart = !!(options.autoStart !== undefined ? options.autoStart : true);
+  // create BackgroundObject instances with derived dark paths (prefer same-folder d.png or replace leading 'l'->'d')
   try {
     this.backgroundObjects = this.backgroundLightPaths.map(lp => {
-      // derive a likely dark path by replacing /layers/1light/ or /layers/ with /dark/
-      let dp = lp.replace('/layers/1light/', '/dark/');
-      if (dp === lp) dp = lp.replace('/layers/', '/dark/');
+      let dp = null;
+      try {
+        // if this is a layer path, prefer a sibling 'd.png' or replace a leading 'l' in filename with 'd'
+        if (lp.indexOf('/layers/') !== -1) {
+          const parts = lp.split('/');
+          const fname = parts.pop();
+          const folder = parts.join('/');
+          if (folder.endsWith('/1light')) {
+            // common case: 1light/completo.png -> dark/completo.png
+            dp = lp.replace('/layers/1light/', '/dark/');
+          } else if (/^l/.test(fname)) {
+            dp = folder + '/' + fname.replace(/^l/, 'd');
+          } else {
+            dp = folder + '/d.png';
+          }
+        } else if (lp.indexOf('/1light/') !== -1) {
+          dp = lp.replace('/1light/', '/dark/');
+        } else {
+          // fallback: try replacing 'l' prefix with 'd'
+          dp = lp.replace(/\/(l)([^\/]*)$/, '/d$2');
+        }
+      } catch (err) { dp = lp; }
       return new BackgroundObject(lp, dp);
     });
   } catch (e) { this.backgroundObjects = []; }
@@ -74,7 +94,17 @@ class World {
   } catch (e) {}
   // ensure a quick initial population so at least ~15 enemies are visible early
   // do not populate instantly; allow ramp in update() to spawn smoothly
-  requestAnimationFrame(() => this.gameLoop());
+  if (this._autoStart) {
+    this.start();
+  }
+  }
+
+  // start the world's main loop (useful to defer until assets loaded)
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this._lastTick = Date.now();
+    requestAnimationFrame(() => this.gameLoop());
   }
 
   gameLoop() {
@@ -166,10 +196,10 @@ class World {
             // increase by 20% of enemy score
             const gained = Math.round((e.score || 0) * 0.2);
             this.score = Math.min(100000, this.score + gained);
-            // visual size boost: +10% for 0.1s
+            // visual size boost: +30% for 0.1s
             try {
               if (this.character) {
-                this.character.visualSizeMultiplier = 1.1;
+                this.character.visualSizeMultiplier = 1.3;
                 this.character.visualSizeTimer = 100; // ms
               }
             } catch (err) {}
@@ -221,9 +251,9 @@ class World {
       }
     }
 
-    // scale character height by score: at 1000 -> 25px, at 100000 -> 250px
-    const minScore = 1000, maxScore = 100000;
-    const minH = 25, maxH = 250;
+    // scale character height by score: at 2000 -> 50px, at 100000 -> 250px
+    const minScore = 2000, maxScore = 100000;
+    const minH = 50, maxH = 250;
   // use centralized helper for exact same mapping as enemies
   const s = MovableObject.sizeFromScore(this.score);
   this.character.height = s.height;
@@ -427,7 +457,7 @@ class World {
   // restart the game: reset score, eaten count, enemies, bubbles and flags
   restartGame() {
     // reset basic state
-    this.score = 1000;
+  this.score = 2000;
     this.enemiesEaten = 0;
     this.gameOver = false;
     this.victory = false;
@@ -483,8 +513,8 @@ class World {
     if (num <= 0) return; // hit rate limit, skip spawning now
     this._spawnedInWindow += num;
     // derive current character-equivalent score from its height
-    const minScore = 1000, maxScore = 100000;
-    const minH = 25, maxH = 250;
+    const minScore = 2000, maxScore = 120000;
+    const minH = 50, maxH = 250;
     const ch = (this.character && this.character.height) ? this.character.height : minH;
     const t = (ch - minH) / (maxH - minH);
     const charScoreEquivalent = Math.round(minScore + (maxScore - minScore) * Math.max(0, Math.min(1, t)));
@@ -510,7 +540,7 @@ class World {
       // choose a score: edible -> <= charScoreEquivalent, non-edible -> > charScoreEquivalent
       const minEnemyScore = 200;
       const low = minEnemyScore;
-      const high = 100000;
+      const high = 120000;
       let scoreVal;
       if (makeEdible) {
         // uniform between low..charScoreEquivalent (but at least low)

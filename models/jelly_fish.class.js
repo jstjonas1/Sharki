@@ -26,11 +26,32 @@ class JellyFish extends Enemy {
     }
 
     update(dt) {
-        const speedPxPerSec = (this.speed || 1) * 60 * 0.6;
-        this.x += this.vx * speedPxPerSec * (dt / 1000);
-    if (this.vx < 0) this.flipX = false; else if (this.vx > 0) this.flipX = true;
+        try {
+            let charSpeed = (this.speed || 1);
+            if (typeof window !== 'undefined' && window.world && window.world.character && typeof window.world.character.speed === 'number') {
+                charSpeed = window.world.character.speed;
+            }
+            const effectiveFactor = Math.min((typeof this.speedFactor === 'number' ? this.speedFactor : 1.0), 1.0);
+            const speedPxPerSec = charSpeed * 60 * effectiveFactor; // px/sec
+            const moveAmount = speedPxPerSec * (dt / 1000);
+            this.x += this.vx * moveAmount;
+            // gentle vertical bobbing to make jellyfish feel alive; amplitude scaled by size
+            const bobAmp = Math.max(4, Math.round(this.height * 0.06));
+            const bobFreq = 0.002 + (0.003 * (1 - effectiveFactor));
+            this.y += Math.sin(Date.now() * bobFreq + (this._bobOffset || 0)) * (bobAmp * (dt/1000));
+            // store actual speed for animation timing/debug overlay
+            this._currentSpeed = Math.abs((this.vx || 0) * speedPxPerSec);
+        } catch (err) {
+            const speedPxPerSec = (this.speed || 1) * 60 * 0.6;
+            this.x += this.vx * speedPxPerSec * (dt / 1000);
+            this._currentSpeed = Math.abs((this.vx || 0) * speedPxPerSec);
+        }
+        if (!this._bobOffset) this._bobOffset = Math.random() * Math.PI * 2;
+        if (this.vx < 0) this.flipX = false; else if (this.vx > 0) this.flipX = true;
         if (this.x + this.width < -50 || this.x > (typeof window !== 'undefined' && window.world ? window.world.canvas.width + 50 : 800)) {
             this._dead = true;
         }
     }
+}
+
 
