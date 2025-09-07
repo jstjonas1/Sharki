@@ -1,23 +1,25 @@
 class Bubble extends MovableObject {
-    constructor(x, y, vx = 0, vy = -1, speed = 4) {
-        super(x, y, 24, 24, speed);
-        this.vx = vx;
-        this.vy = vy;
-        this.lifetime = 5000; // ms
+    constructor(x, y, dir = 1) {
+        super();
+        this.x = x || 0;
+        this.y = y || 0;
+        this.vx = (dir || 1) * 200; // px/sec
+        this.vy = -40; // slight upward velocity
+        this.lifetime = 3000; // ms
         this._born = Date.now();
-        // load bubble image if available
-        this.loadImage('../assets/img/sharki/1sharkie/4attack/bubble_trap/bubble.png', 0.5).catch(() => {});
+        this.width = 16;
+        this.height = 16;
+        this.img = new Image();
+        // try a likely bubble image; fallback silently if missing
+        this.img.src = './assets/img/sharki/1sharkie/4attack/bubble_trap/bubble.png';
     }
 
     update(dt) {
-        const s = this.speed;
-        this.x += this.vx * s * (dt/16);
-        this.y += this.vy * s * (dt/16);
+        this.x += (this.vx * dt) / 1000;
+        this.y += (this.vy * dt) / 1000;
     }
 
     isExpired() {
         return (Date.now() - this._born) > this.lifetime;
     }
 }
-
-export default Bubble;

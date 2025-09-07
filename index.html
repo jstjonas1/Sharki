@@ -10,14 +10,16 @@
     <link rel="stylesheet" href="./style/standart.css" />
 
     <script src="./scripts/database.js" defer></script>
+    <script src="./assets/img/sharki/frames-manifest.js" defer></script>
     <script src="./models/movable-object.class.js" defer></script>
     <script src="./models/enemy.class.js" defer></script>
+    <script src="./models/background.class.js" defer></script>
     <script src="./models/jelly_fish.class.js" defer></script>
     <script src="./models/puffer_fish.class.js" defer></script>
     <script src="./models/boss.class.js" defer></script>
     <script src="./models/character.class.js" defer></script>
-    <script src="./models/background.class.js" defer></script>
     <script src="./models/water.class.js" defer></script>
+    <script src="./models/bubble.class.js" defer></script>
     <script src="./models/world.class.js" defer></script>
     <script src="./js/game.js" defer></script>
 
@@ -26,9 +28,25 @@
 <body onload="init()">
     <h1>Sharki</h1>
 
-    <canvas id="gameCanvas" width="720" height="480">
+    <!-- Start screen: choose Light or Dark mode before starting -->
+    <div id="startScreen" style="position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999;">
+        <div style="background:#fff; padding:20px 24px; border-radius:8px; text-align:center; width:320px;">
+            <h2>Spiel starten</h2>
+            <div style="margin:12px 0; text-align:left;">
+                <label style="display:block; margin-bottom:8px;"><input type="radio" name="startMode" value="light" checked> Lichtmodus</label>
+                <label style="display:block;"><input type="radio" name="startMode" value="dark"> Dunkelmodus</label>
+            </div>
+            <div style="margin-top:14px;">
+                <button id="startBtn" style="padding:8px 14px; font-size:16px;">Start</button>
+            </div>
+            <p style="font-size:12px; color:#666; margin-top:12px;">Steuerung: Pfeile / WASD bewegen, Leertaste = Fin-Slap, F = Bubble, R = Neustart (nach Game Over)</p>
+        </div>
+    </div>
 
-    </canvas>
+    <canvas id="gameCanvas" width="720" height="480"></canvas>
+    <div id="controls" style="text-align:center; margin-top:8px;">
+        <label><input type="checkbox" id="darkToggle"> Dark Mode</label>
+    </div>
 
 </body>
 
