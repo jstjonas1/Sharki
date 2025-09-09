@@ -52,11 +52,13 @@ function init() {
                 }
             } catch (err) {}
 
-            // determine selected mode
+            // determine selected mode and difficulty
             const sel = document.querySelector('input[name="startMode"]:checked');
             const isDark = sel && sel.value === 'dark';
-            // attempt to enter fullscreen on narrow devices (user gesture)
-            try { if (isNarrow) enterFullscreen(); } catch (e) {}
+            const difSel = document.querySelector('input[name="difficulty"]:checked');
+            const difficulty = difSel ? difSel.value : 'normal';
+            // Do not automatically enter fullscreen on start; only enter fullscreen via the explicit fullscreen button.
+            // (native fullscreen often requires a direct user gesture and auto-calling it can be blocked.)
 
             // preload critical assets (manifest + backgrounds) so pending loads are registered
             try { preloadCriticalAssets(); } catch (e) {}
@@ -115,6 +117,7 @@ function init() {
             }
             // apply chosen mode
             try { if (typeof world.setDarkMode === 'function') world.setDarkMode(isDark); } catch (e) {}
+            try { if (window.world) window.world.difficulty = difficulty; } catch (e) {}
             // sync checkbox and persist choice
             const darkToggle = document.getElementById('darkToggle');
             if (darkToggle) {
@@ -124,6 +127,24 @@ function init() {
             // hide start screen
             if (startScreen) startScreen.style.display = 'none';
         });
+        // Touch Mode: enable on-screen touch controls (crosshair + separate shoot button)
+        try {
+            const tbtn = document.getElementById('touchModeBtn');
+            if (tbtn) {
+                tbtn.addEventListener('click', () => {
+                    try { window._touchModeEnabled = true; } catch (e) {}
+                    // setup mobile controls so crosshair + shoot appear
+                    try { if (typeof setupMobileControls === 'function') setupMobileControls(); } catch (e) {}
+                    // also enter mobile mode and show controls immediately regardless of viewport
+                    try { if (typeof enterMobileMode === 'function') enterMobileMode(); } catch (e) {}
+                    try { if (typeof showMobileControls === 'function') showMobileControls(); } catch (e) {}
+                    // visually indicate selected state
+                    try { tbtn.innerText = 'Touch Mode ✓'; tbtn.disabled = true; } catch (e) {}
+                    // persist choice so reload keeps touch mode if desired
+                    try { localStorage.setItem('sharkyTouchMode', '1'); } catch (e) {}
+                });
+            }
+        } catch (e) {}
     } catch (e) {}
 
     // wire dark mode toggle (if present) for runtime toggling
@@ -194,13 +215,17 @@ function enterFullscreen() {
 function enterPseudoFullscreen() {
     try {
         if (!canvas) canvas = document.getElementById('gameCanvas');
-        // remember previous state
-        if (!window._pseudoFsState) window._pseudoFsState = {};
-        window._pseudoFsState.bodyOverflow = document.body.style.overflow || '';
-        window._pseudoFsState.htmlOverflow = document.documentElement.style.overflow || '';
-        window._pseudoFsState.canvasStyle = { position: canvas.style.position || '', left: canvas.style.left || '', top: canvas.style.top || '', width: canvas.style.width || '', height: canvas.style.height || '', zIndex: canvas.style.zIndex || '' };
-    // hide non-canvas UI but keep the start screen visible so users can start from fullscreen
+    // remember previous state
+    if (!window._pseudoFsState) window._pseudoFsState = {};
+    window._pseudoFsState.bodyOverflow = document.body.style.overflow || '';
+    window._pseudoFsState.htmlOverflow = document.documentElement.style.overflow || '';
+    window._pseudoFsState.bodyMargin = document.body.style.margin || '';
+    window._pseudoFsState.htmlMargin = document.documentElement.style.margin || '';
+    window._pseudoFsState.canvasStyle = { position: canvas.style.position || '', left: canvas.style.left || '', top: canvas.style.top || '', width: canvas.style.width || '', height: canvas.style.height || '', zIndex: canvas.style.zIndex || '' };
+        // hide non-canvas UI but keep the start screen visible so users can start from fullscreen
     try { document.querySelectorAll('#controls, header, nav, footer, #loadOverlay').forEach(el => { if (el) el.style.display = 'none'; }); } catch (e) {}
+    // ensure no scrollbars and body margins are removed in pseudo/fullscreen
+    try { document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; document.body.style.margin = '0'; document.documentElement.style.margin = '0'; } catch (e) {}
         // disable scroll and overscroll
         try { document.documentElement.style.overflow = 'hidden'; document.body.style.overflow = 'hidden'; document.documentElement.style.overscrollBehavior = 'none'; document.body.style.overscrollBehavior = 'none'; document.documentElement.style.touchAction = 'none'; document.body.style.touchAction = 'none'; } catch (e) {}
         // style canvas to fill viewport and be on top
@@ -249,7 +274,9 @@ function exitPseudoFullscreen() {
     try {
         if (!canvas) canvas = document.getElementById('gameCanvas');
         // restore hidden UI
-        try { document.querySelectorAll('#startScreen, #controls, header, nav, footer, #loadOverlay').forEach(el => { if (el) el.style.display = ''; }); } catch (e) {}
+    try { document.querySelectorAll('#startScreen, #controls, header, nav, footer, #loadOverlay').forEach(el => { if (el) el.style.display = ''; }); } catch (e) {}
+    // restore overflow and margins
+    try { document.documentElement.style.overflow = window._pseudoFsState && window._pseudoFsState.htmlOverflow || ''; document.body.style.overflow = window._pseudoFsState && window._pseudoFsState.bodyOverflow || ''; document.body.style.margin = window._pseudoFsState.bodyMargin || ''; document.documentElement.style.margin = window._pseudoFsState.htmlMargin || ''; } catch (e) {}
         // restore scroll
         try { document.documentElement.style.overflow = window._pseudoFsState && window._pseudoFsState.htmlOverflow || ''; document.body.style.overflow = window._pseudoFsState && window._pseudoFsState.bodyOverflow || ''; document.documentElement.style.overscrollBehavior = ''; document.body.style.overscrollBehavior = ''; document.documentElement.style.touchAction = ''; document.body.style.touchAction = ''; } catch (e) {}
         // restore canvas styles
@@ -290,7 +317,7 @@ function fitCanvasToScreen() {
             // disable page scroll while in fullscreen and reduce iOS overscroll bounce
             try {
                 if (_origBodyOverflow === null) {
-                    _origBodyOverflow = { doc: document.documentElement.style.overflow || '', body: document.body.style.overflow || '' };
+                    _origBodyOverflow = { doc: document.documentElement.style.overflow || '', body: document.body.style.overflow || '', htmlMargin: document.documentElement.style.margin || '', bodyMargin: document.body.style.margin || '' };
                 }
                 if (_origBodyTouch === null) {
                     _origBodyTouch = {
@@ -303,6 +330,9 @@ function fitCanvasToScreen() {
                 }
                 document.documentElement.style.overflow = 'hidden';
                 document.body.style.overflow = 'hidden';
+                // remove margins that could create scrollbars in fullscreen
+                document.body.style.margin = '0';
+                document.documentElement.style.margin = '0';
                 // prefer disabling overscroll behavior and touch action to avoid bounce on iOS
                 try { document.documentElement.style.overscrollBehavior = 'none'; } catch (e) {}
                 try { document.body.style.overscrollBehavior = 'none'; } catch (e) {}
@@ -467,24 +497,63 @@ function showGameOverOverlay() {
         ov.style.display = 'flex'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
         ov.style.background = 'rgba(0,0,0,0.85)'; ov.style.color = 'white'; ov.style.zIndex = '10001';
         ov.style.padding = '20px'; ov.style.boxSizing = 'border-box';
-        const inner = document.createElement('div'); inner.style.background = '#0b2233'; inner.style.padding = '18px'; inner.style.borderRadius = '10px'; inner.style.width = '320px'; inner.style.textAlign = 'center';
-        inner.innerHTML = `<h2 style="margin:0 0 8px">Spiel vorbei</h2>
-            <div id="gameOverScore" style="font-size:18px; margin-bottom:12px">Punkte: 0</div>
-            <div style="text-align:left; margin-bottom:12px">
-              <label style="display:block; margin-bottom:6px"><input type="radio" name="overMode" value="light"> Lichtmodus</label>
-              <label style="display:block"><input type="radio" name="overMode" value="dark"> Dunkelmodus</label>
-            </div>
-            <div style="display:flex; gap:10px; justify-content:center">
-              <button id="overRestartBtn" style="padding:8px 12px; font-size:16px">Neustart</button>
-              <button id="overContinueBtn" style="padding:8px 12px; font-size:16px">Zurück</button>
-            </div>`;
+                const inner = document.createElement('div'); inner.style.background = '#0b2233'; inner.style.padding = '18px'; inner.style.borderRadius = '10px'; inner.style.width = '360px'; inner.style.maxWidth = '92vw'; inner.style.textAlign = 'center';
+                inner.innerHTML = `<h2 style="margin:0 0 8px">Spiel vorbei</h2>
+                        <div id="gameOverScore" style="font-size:18px; margin-bottom:8px">Punkte: 0</div>
+                        <div id="gameOverTime" style="font-size:14px; margin-bottom:12px">Zeit: 0s</div>
+                        <div style="text-align:left; margin-bottom:12px">
+                            <label style="display:block; margin-bottom:6px"><input type="radio" name="overMode" value="light"> Lichtmodus</label>
+                            <label style="display:block"><input type="radio" name="overMode" value="dark"> Dunkelmodus</label>
+                        </div>
+                        <div style="margin-bottom:10px; text-align:left">
+                            <label style="display:block; margin-bottom:6px">Name (für Highscore):</label>
+                            <input id="gameOverName" type="text" style="width:100%; padding:8px; box-sizing:border-box; border-radius:6px; border:1px solid rgba(255,255,255,0.08); background:transparent; color:white" maxlength="24" />
+                        </div>
+                        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
+                            <button id="overSaveBtn" style="padding:8px 12px; font-size:16px">Score speichern</button>
+                            <button id="overRestartBtn" style="padding:8px 12px; font-size:16px">Neustart</button>
+                            <button id="overMenuBtn" style="padding:8px 12px; font-size:16px">Zum Menü</button>
+                            <button id="overHighscoresBtn" style="padding:8px 12px; font-size:16px">Highscores</button>
+                            <button id="overContinueBtn" style="padding:8px 12px; font-size:16px">Zurück</button>
+                        </div>`;
         ov.appendChild(inner); document.body.appendChild(ov);
 
         // wire controls
         const r = inner.querySelector('#overRestartBtn');
         const c = inner.querySelector('#overContinueBtn');
-        r && r.addEventListener('click', () => { try { triggerRestart(); hideGameOverOverlay(); } catch (e) {} });
+        const saveBtn = inner.querySelector('#overSaveBtn');
+        const nameInput = inner.querySelector('#gameOverName');
+    r && r.addEventListener('click', () => { try { triggerRestart(); hideGameOverOverlay(); } catch (e) {} });
         c && c.addEventListener('click', () => { try { hideGameOverOverlay(); } catch (e) {} });
+                saveBtn && saveBtn.addEventListener('click', () => {
+            try {
+                const name = (nameInput && nameInput.value) ? nameInput.value.trim() : 'Player';
+                const score = window.world ? (window.world.score || 0) : 0;
+                const timeMs = window.world ? (window.world._finalElapsedMs || window.world.elapsedMs || 0) : 0;
+                const difficulty = window.world ? (window.world.difficulty || 'normal') : 'normal';
+                // compute finalScore if helper available
+                let finalScore = score;
+                try { if (typeof calculateFinalScore === 'function') finalScore = calculateFinalScore(difficulty, score, timeMs); } catch (e) {}
+                saveHighscoreRecord({ name: name || 'Player', score: score, finalScore: finalScore, difficulty: difficulty, timeMs: timeMs, when: Date.now() });
+                // give feedback
+                saveBtn.innerText = 'Gespeichert';
+                setTimeout(() => { try { saveBtn.innerText = 'Score speichern'; } catch (e) {} }, 1200);
+                // show highscores after saving
+                try { showHighscoresOverlay(); } catch (e) {}
+            } catch (e) {}
+        });
+        // Menu and Highscores buttons
+        const menuBtn = inner.querySelector('#overMenuBtn');
+        const hsBtn = inner.querySelector('#overHighscoresBtn');
+        menuBtn && menuBtn.addEventListener('click', () => {
+            try {
+                hideGameOverOverlay();
+                const ss = document.getElementById('startScreen'); if (ss) { ss.style.display = 'flex'; ss.style.zIndex = window._inPseudoFullscreen ? '2147483647' : '10001'; }
+            } catch (e) {}
+        });
+        hsBtn && hsBtn.addEventListener('click', () => {
+            try { showHighscoresOverlay(); } catch (e) {}
+        });
         const radios = inner.querySelectorAll('input[name="overMode"]');
         radios.forEach(rb => rb.addEventListener('change', (ev) => {
             const isDark = ev.target.value === 'dark';
@@ -492,8 +561,17 @@ function showGameOverOverlay() {
             try { localStorage.setItem('sharkyDarkMode', isDark ? '1' : '0'); } catch (e) {}
         }));
     }
-    // update score and selected mode
-    try { const s = document.getElementById('gameOverScore'); if (s) s.innerText = 'Punkte: ' + (window.world ? (window.world.score || 0) : 0); } catch (e) {}
+    // update score, final score and selected mode/difficulty
+    try {
+        const baseScore = window.world ? (window.world.score || 0) : 0;
+        const ms = window.world ? (window.world._finalElapsedMs || window.world.elapsedMs || 0) : 0;
+        const secs = Math.round(ms / 1000);
+        let difficulty = window.world ? (window.world.difficulty || 'normal') : 'normal';
+        let finalScore = baseScore;
+        try { if (typeof calculateFinalScore === 'function') finalScore = calculateFinalScore(difficulty, baseScore, ms); } catch (e) {}
+        const s = document.getElementById('gameOverScore'); if (s) s.innerText = 'Punkte: ' + baseScore + '  (' + difficulty + ', final: ' + finalScore + ')';
+        const t = document.getElementById('gameOverTime'); if (t) t.innerText = 'Zeit: ' + secs + 's';
+    } catch (e) {}
     try {
         const saved = localStorage.getItem('sharkyDarkMode');
         if (saved !== null) {
@@ -502,8 +580,7 @@ function showGameOverOverlay() {
         }
     } catch (e) {}
     ov.style.display = 'flex';
-    // ensure fullscreen on mobile when overlay shows
-    try { enterFullscreen(); } catch (e) {}
+    // Do not auto-enter fullscreen when showing the Game Over overlay — keep user control.
     // if we're in fullscreen or pseudo fullscreen, add a top-right restart shortcut on the overlay
     try {
         const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) || !!window._inPseudoFullscreen;
@@ -515,13 +592,68 @@ function showGameOverOverlay() {
                 topRestart.addEventListener('click', () => { try { triggerRestart(); hideGameOverOverlay(); } catch (e) {} });
                 document.body.appendChild(topRestart);
             }
+            // also add a top-right 'Zum Menü' shortcut (left of the restart button)
+            let topMenu = document.getElementById('gameOverTopMenu');
+            if (!topMenu) {
+                topMenu = document.createElement('button'); topMenu.id = 'gameOverTopMenu'; topMenu.innerText = 'Zum Menü';
+                topMenu.style.position = 'fixed'; topMenu.style.right = '110px'; topMenu.style.top = '12px'; topMenu.style.zIndex = '10002'; topMenu.style.padding = '8px 10px'; topMenu.style.borderRadius = '8px'; topMenu.style.background = 'rgba(255,255,255,0.06)'; topMenu.style.color = 'white'; topMenu.style.border = 'none';
+                topMenu.addEventListener('click', () => { try { hideGameOverOverlay(); const ss = document.getElementById('startScreen'); if (ss) { ss.style.display = 'flex'; ss.style.zIndex = window._inPseudoFullscreen ? '2147483647' : '10001'; } } catch (e) {} });
+                document.body.appendChild(topMenu);
+            }
         }
+    } catch (e) {}
+}
+
+// highscores storage is provided by ./scripts/highscores.js (loadHighscores/saveHighscores/saveHighscoreRecord/getTopHighscores)
+
+function showHighscoresOverlay() {
+    try {
+    let list = (typeof getTopHighscores === 'function') ? (getTopHighscores(50, false) || []) : (loadHighscores ? (loadHighscores() || []) : []);
+        let ov = document.getElementById('highscoresOverlay');
+        if (!ov) {
+            ov = document.createElement('div'); ov.id = 'highscoresOverlay';
+            ov.style.position = 'fixed'; ov.style.left = '0'; ov.style.top = '0'; ov.style.width = '100%'; ov.style.height = '100%';
+            ov.style.display = 'flex'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
+            ov.style.background = 'rgba(0,0,0,0.85)'; ov.style.color = 'white'; ov.style.zIndex = '10003';
+            const inner = document.createElement('div'); inner.style.background = '#07232b'; inner.style.padding = '16px'; inner.style.borderRadius = '10px'; inner.style.width = '360px'; inner.style.maxWidth = '92vw';
+            const title = document.createElement('h3'); title.style.margin = '0 0 8px'; title.innerText = 'Highscores'; inner.appendChild(title);
+            // no include-easy control: Easy-mode scores are excluded from the main list by default
+            const listEl = document.createElement('div'); listEl.id = 'highscoresList'; listEl.style.maxHeight = '60vh'; listEl.style.overflowY = 'auto'; listEl.style.marginBottom = '12px'; inner.appendChild(listEl);
+            const close = document.createElement('button'); close.innerText = 'Schließen'; close.style.padding = '8px 10px'; close.style.borderRadius = '6px'; close.style.border='none'; close.style.background='rgba(255,255,255,0.06)'; close.style.color='white';
+            close.addEventListener('click', () => { try { const o = document.getElementById('highscoresOverlay'); if (o && o.parentNode) o.parentNode.removeChild(o); } catch (e) {} });
+            inner.appendChild(close);
+            ov.appendChild(inner); document.body.appendChild(ov);
+        }
+    const listEl = document.getElementById('highscoresList'); if (!listEl) return;
+    // Always exclude Easy-mode entries from the displayed top list (do not prompt)
+    if (typeof getTopHighscores === 'function') list = getTopHighscores(50, false) || [];
+        // render top 10 or show a dash
+        listEl.innerHTML = '';
+        if (!list || !list.length) {
+            const dash = document.createElement('div'); dash.style.textAlign='center'; dash.style.padding='12px'; dash.innerText = '-'; listEl.appendChild(dash); return;
+        }
+    const top = list.slice(0,10);
+        top.forEach((r, idx) => {
+            const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='6px 4px'; row.style.borderBottom='1px solid rgba(255,255,255,0.04)';
+            const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column'; left.style.alignItems='flex-start';
+            const name = document.createElement('div'); name.style.fontWeight='600'; name.innerText = `${idx+1}. ${r.name || 'Player'}`;
+            const meta = document.createElement('div'); meta.style.fontSize='12px'; meta.style.opacity='0.9'; const secs = Math.round((r.timeMs || 0)/1000); meta.innerText = `${secs}s • ${r.difficulty || 'normal'}`;
+            left.appendChild(name); left.appendChild(meta);
+            const right = document.createElement('div'); right.style.textAlign='right'; const score = document.createElement('div'); score.style.fontFamily='monospace'; score.innerText = r.score || 0; right.appendChild(score);
+            // show computed finalScore if present
+            if (typeof r.finalScore !== 'undefined') {
+                const final = document.createElement('div'); final.style.fontFamily='monospace'; final.style.fontSize='12px'; final.style.opacity='0.95'; final.innerText = '(' + (r.finalScore||0) + ')'; right.appendChild(final);
+            }
+            row.appendChild(left); row.appendChild(right); listEl.appendChild(row);
+        });
+    // no include-easy handler (Easy entries are ignored)
     } catch (e) {}
 }
 
 function hideGameOverOverlay() {
     try { const ov = document.getElementById('gameOverOverlay'); if (ov && ov.parentNode) ov.parentNode.removeChild(ov); } catch (e) {}
     try { const tr = document.getElementById('gameOverTopRestart'); if (tr && tr.parentNode) tr.parentNode.removeChild(tr); } catch (e) {}
+    try { const tm = document.getElementById('gameOverTopMenu'); if (tm && tm.parentNode) tm.parentNode.removeChild(tm); } catch (e) {}
 }
 
 let _gameOverMonitored = false;
@@ -529,8 +661,8 @@ function monitorGameOver() {
     if (_gameOverMonitored) return; _gameOverMonitored = true;
     function loop() {
         try {
-            if (window.world && window.world.gameOver) {
-                showGameOverOverlay();
+            if (window.world && (window.world.gameOver || window.world.victory)) {
+                try { showGameOverOverlay(); } catch (e) {}
                 // stop monitoring until restart clears gameOver
                 _gameOverMonitored = false;
                 return;
@@ -783,9 +915,13 @@ function enterMobileMode() {
 
                 // pointer handling: drag sets movement flags, tap fires
                 let active = false; let pid = null; let origin = null;
-                ch.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); active = true; pid = ev.pointerId; origin = { x: ev.clientX, y: ev.clientY }; try { ch.setPointerCapture && ch.setPointerCapture(ev.pointerId); } catch (e) {};
-                    // immediate shoot on tap
-                    try { if (window.world && window.world.character && typeof window.world.character.shootBubble === 'function') window.world.character.shootBubble(); } catch (e) {}
+                ch.addEventListener('pointerdown', (ev) => {
+                    ev.preventDefault(); ev.stopPropagation();
+                    active = true; pid = ev.pointerId; origin = { x: ev.clientX, y: ev.clientY };
+                    try { ch.setPointerCapture && ch.setPointerCapture(ev.pointerId); } catch (e) {}
+                    // Do NOT shoot when tapping the crosshair. Crosshair is only for aiming/movement.
+                    // Shooting should happen only via the dedicated shoot button (mobileShootBtnMain or other shoot elements).
+                    window._crossActive = true;
                 });
                 ch.addEventListener('pointermove', (ev) => {
                     if (!active || ev.pointerId !== pid) return; ev.preventDefault();
@@ -879,30 +1015,45 @@ window.addEventListener('keydown', (e) => {
 
 // central restart helper used by UI button and R-key
 function triggerRestart() {
-    if (!window.world) return;
+    // Instead of immediately restarting the running world, pause it and show the
+    // start overlay so the player can re-select mode/difficulty (matches initial flow)
     try {
-        if (typeof window.world.restartGame === 'function') {
-            window.world.restartGame();
-            return;
+        const ss = document.getElementById('startScreen');
+        if (ss) {
+            ss.style.display = 'flex';
+            // keep it above fullscreen/pseudo-fullscreen layers when present
+            try { ss.style.zIndex = window._inPseudoFullscreen ? '2147483647' : '10001'; } catch (e) {}
         }
     } catch (e) {}
-    // fallback: manual reset (ensure enemiesEaten is reset too)
-    window.world.gameOver = false;
-    window.world.bossActive = false;
-    window.world.score = 2000;
-    window.world.enemies = [];
-    window.world.bubbles = [];
-    window.world.enemiesEaten = 0;
-    if (window.world.character) {
-        window.world.character.health = window.world.character.maxHealth || 100;
-        const cw = window.world.canvas.width;
-        const ch = window.world.canvas.height;
-        const cwid = (window.world.character.width) ? window.world.character.width : 32;
-        const chei = (window.world.character.height) ? window.world.character.height : 48;
-        window.world.character.x = Math.round((cw - cwid) / 2);
-        window.world.character.y = Math.round((ch - chei) / 2);
-    }
-    window.world.populateEnemies();
+
+    if (!window.world) return;
+    try {
+        // pause current world loop and clear transient state so it doesn't continue running
+        window.world.running = false;
+        window.world.gameOver = false;
+        window.world.victory = false;
+        window.world.bossActive = false;
+        // clear arrays and timers
+        try { window.world.enemies = []; } catch (e) {}
+        try { window.world.bubbles = []; } catch (e) {}
+        try { window.world.enemiesEaten = 0; } catch (e) {}
+        try { window.world._spawnTimer = 0; window.world._spawnedInWindow = 0; } catch (e) {}
+        // reset character position if available
+        try {
+            if (window.world.character) {
+                window.world.character.health = window.world.character.maxHealth || 100;
+                const cw = window.world.canvas.width; const ch = window.world.canvas.height;
+                const cwid = (window.world.character.width) ? window.world.character.width : 32;
+                const chei = (window.world.character.height) ? window.world.character.height : 48;
+                window.world.character.x = Math.round((cw - cwid) / 2);
+                window.world.character.y = Math.round((ch - chei) / 2);
+            }
+        } catch (e) {}
+    } catch (e) {}
+
+    // ensure any game-over UI is hidden so the start overlay is the active UI
+    try { hideGameOverOverlay(); } catch (e) {}
+    // user will press Start to create a fresh World instance and begin
 }
 
 // wire the restart button if present

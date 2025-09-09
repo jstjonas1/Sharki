@@ -1,4 +1,20 @@
 class World {
+  // small helper to draw rounded rects on canvas
+  static _roundRect(ctx, x, y, w, h, r) {
+    if (!ctx) return;
+    const radius = typeof r === 'number' ? r : 6;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
   // store light paths; dark paths will be derived and BackgroundObjects created in constructor
   backgroundLightPaths = [
     './assets/img/sharki/3background/layers/5water/l.png',
@@ -10,13 +26,24 @@ class World {
   backgroundObjects = [];
   character  = new Character();
   enemies    = [];
+  // gameplay timer (ms)
+  _startTime = null;
+  elapsedMs = 0;
   // config
   minEnemies = 15;
   maxEnemies = 25;
+  // fraction of desired enemies that should be edible (0..1)
+  minEdibleFraction = 0.3;
   // multiplier to increase spawn counts (set to 2 for approx. double)
   spawnMultiplier = 2;
   // maximum enemies that can be spawned per second (rate limit)
   spawnRateMaxPerSec = 5;
+  // difficulty and caps
+  difficulty = 'normal'; // 'easy' | 'normal' | 'hard' | 'infinity'
+  // enemy score cap (used when generating enemy scores)
+  enemyScoreCap = 120000;
+  // boss trigger threshold (when reached -> boss fight). Infinity mode increases this.
+  bossTriggerScore = 120000;
   // internal rate window
   _spawnWindowStart = Date.now();
   _spawnedInWindow = 0;
@@ -28,75 +55,75 @@ class World {
   bubbles = [];
   enemiesEaten = 0;
 
-  canvas; ctx;
-  gameOver = false;
-  victory = false;
-  _victoryStart = 0;
-
+  // constructor: initialize instance with canvas and options
   constructor(canvas, options = {}) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+    try { this.ctx = canvas.getContext('2d'); } catch (e) { this.ctx = null; }
     this._lastTick = Date.now();
     this.running = false; // start only when start() called
     this._autoStart = !!(options.autoStart !== undefined ? options.autoStart : true);
-  // create BackgroundObject instances with derived dark paths (prefer same-folder d.png or replace leading 'l'->'d')
-  try {
-    this.backgroundObjects = this.backgroundLightPaths.map(lp => {
-      let dp = null;
-      try {
-        // if this is a layer path, prefer a sibling 'd.png' or replace a leading 'l' in filename with 'd'
-        if (lp.indexOf('/layers/') !== -1) {
-          const parts = lp.split('/');
-          const fname = parts.pop();
-          const folder = parts.join('/');
-          if (folder.endsWith('/1light')) {
-            // common case: 1light/completo.png -> dark/completo.png
-            dp = lp.replace('/layers/1light/', '/dark/');
-          } else if (/^l/.test(fname)) {
-            dp = folder + '/' + fname.replace(/^l/, 'd');
-          } else {
-            dp = folder + '/d.png';
-          }
-        } else if (lp.indexOf('/1light/') !== -1) {
-          dp = lp.replace('/1light/', '/dark/');
-        } else {
-          // fallback: try replacing 'l' prefix with 'd'
-          dp = lp.replace(/\/(l)([^\/]*)$/, '/d$2');
-        }
-      } catch (err) { dp = lp; }
-      return new BackgroundObject(lp, dp);
-    });
-  } catch (e) { this.backgroundObjects = []; }
-  // initial population ramp (smoothly go from minEnemies -> initialTarget over duration)
-  this._initialRampStart = Date.now();
-  this._initialRampDuration = 10000; // ms to reach target
-  this._initialRampTarget = 15; // desired enemies after ramp
-  this.debug = false; // debug HUD toggle
-  // key to toggle debug HUD: D
-  try {
-    window.addEventListener('keydown', (ev) => {
-      if (!ev) return;
-      if (ev.key === 'd' || ev.key === 'D') this.debug = !this.debug;
-      if ((ev.key === 'r' || ev.key === 'R') && (this.gameOver || this.victory)) {
-        try { this.restartGame(); } catch (e) {}
-      }
-    });
-  } catch (e) {}
 
-  // position character in canvas center (use character size or defaults)
-  try {
-    const cw = this.canvas.width;
-    const ch = this.canvas.height;
-    const cwid = (this.character && this.character.width) ? this.character.width : 32;
-    const chei = (this.character && this.character.height) ? this.character.height : 48;
-    this.character.x = Math.round((cw - cwid) / 2);
-    this.character.y = Math.round((ch - chei) / 2);
-  } catch (e) {}
-  // ensure a quick initial population so at least ~15 enemies are visible early
-  // do not populate instantly; allow ramp in update() to spawn smoothly
-  if (this._autoStart) {
-    this.start();
-  }
+    // create BackgroundObject instances with derived dark paths (prefer same-folder d.png or replace leading 'l'->'d')
+    try {
+      this.backgroundObjects = this.backgroundLightPaths.map(lp => {
+        let dp = null;
+        try {
+          // if this is a layer path, prefer a sibling 'd.png' or replace a leading 'l' in filename with 'd'
+          if (lp.indexOf('/layers/') !== -1) {
+            const parts = lp.split('/');
+            const fname = parts.pop();
+            const folder = parts.join('/');
+            if (folder.endsWith('/1light')) {
+              // common case: 1light/completo.png -> dark/completo.png
+              dp = lp.replace('/layers/1light/', '/dark/');
+            } else if (/^l/.test(fname)) {
+              dp = folder + '/' + fname.replace(/^l/, 'd');
+            } else {
+              dp = folder + '/d.png';
+            }
+          } else if (lp.indexOf('/1light/') !== -1) {
+            dp = lp.replace('/1light/', '/dark/');
+          } else {
+            // fallback: try replacing 'l' prefix with 'd'
+            dp = lp.replace(/\/(l)([^\/]*)$/, '/d$2');
+          }
+        } catch (err) { dp = lp; }
+        return new BackgroundObject(lp, dp);
+      });
+    } catch (e) { this.backgroundObjects = []; }
+
+    // initial population ramp (smoothly go from minEnemies -> initialTarget over duration)
+    this._initialRampStart = Date.now();
+    this._initialRampDuration = 10000; // ms to reach target
+    this._initialRampTarget = 15; // desired enemies after ramp
+    this.debug = false; // debug HUD toggle
+
+    // key to toggle debug HUD: D
+    try {
+      window.addEventListener('keydown', (ev) => {
+        if (!ev) return;
+        if (ev.key === 'd' || ev.key === 'D') this.debug = !this.debug;
+        if ((ev.key === 'r' || ev.key === 'R') && (this.gameOver || this.victory)) {
+          try { this.restartGame(); } catch (e) {}
+        }
+      });
+    } catch (e) {}
+
+    // position character in canvas center (use character size or defaults)
+    try {
+      const cw = this.canvas.width;
+      const ch = this.canvas.height;
+      const cwid = (this.character && this.character.width) ? this.character.width : 32;
+      const chei = (this.character && this.character.height) ? this.character.height : 48;
+      this.character.x = Math.round((cw - cwid) / 2);
+      this.character.y = Math.round((ch - chei) / 2);
+    } catch (e) {}
+
+    // ensure a quick initial population so at least ~15 enemies are visible early
+    // do not populate instantly; allow ramp in update() to spawn smoothly
+    if (this._autoStart) {
+      this.start();
+    }
   }
 
   // start the world's main loop (useful to defer until assets loaded)
@@ -104,6 +131,13 @@ class World {
     if (this.running) return;
     this.running = true;
     this._lastTick = Date.now();
+  // start/continue timer
+  this._startTime = Date.now();
+  this.elapsedMs = 0;
+  // apply difficulty adjustments before the world starts spawning
+  try { this.applyDifficultySettings(); } catch (e) {}
+  // set starting score depending on difficulty (infinity starts higher)
+  try { this.score = (this.difficulty === 'infinity') ? 10000 : 2000; } catch (e) { this.score = 2000; }
     requestAnimationFrame(() => this.gameLoop());
   }
 
@@ -117,6 +151,8 @@ class World {
   }
 
   update(dt) {
+  // update timer before pausing for game over/victory
+  try { if (this.running && !this.gameOver && !this.victory) { this.elapsedMs = (this.elapsedMs || 0) + dt; } } catch (e) {}
   if (this.gameOver || this.victory) return; // pause updates when game over or victory
     // update character
   if (this.character && typeof this.character.update === 'function') this.character.update(dt);
@@ -193,9 +229,17 @@ class World {
             e._dead = true;
             // track eaten enemies
             this.enemiesEaten = (this.enemiesEaten || 0) + 1;
-            // increase by 20% of enemy score
-            const gained = Math.round((e.score || 0) * 0.2);
-            this.score = Math.min(100000, this.score + gained);
+            // calculate gained points depending on difficulty
+            let baseFraction = 0.2;
+            try {
+              const d = (this.difficulty || 'normal').toString().toLowerCase();
+              if (d === 'infinity') baseFraction = 0.025; // 2.5% in infinity mode
+              else if (d === 'easy') baseFraction = 0.8; // Easy: 80% of enemy score
+            } catch (e2) {}
+            let gainedBase = Math.round((e.score || 0) * baseFraction);
+            // apply world caps (Infinity mode increases world cap)
+            const worldCap = (this.difficulty === 'infinity') ? 999999 : 120000;
+            this.score = Math.min(worldCap, this.score + gainedBase);
             // visual size boost: +30% for 0.1s
             try {
               if (this.character) {
@@ -239,7 +283,7 @@ class World {
         // desired count is randomized each interval
         desired = Math.min(this.maxEnemies, Math.max(this.minEnemies, Math.floor(Math.random() * (this.maxEnemies - this.minEnemies + 1))));
       }
-      // spawn gradually: use spawn timer
+  // spawn gradually: use spawn timer
       if (this.enemies.length < desired) {
         this._spawnTimer += dt;
         while (this._spawnTimer >= this._spawnInterval && this.enemies.length < desired) {
@@ -262,10 +306,13 @@ class World {
   // ensure enemies sizes are consistent with their score mapping (so same-score => same-height)
   this.enemies.forEach(e => { if (typeof e.applySizeFromScore === 'function') e.applySizeFromScore(); });
 
-    // boss fight trigger
-    if (!this.bossActive && this.score >= maxScore) {
-      this.startBossFight();
-    }
+    // boss fight trigger (respect dynamic bossTriggerScore)
+    // Infinity mode has no boss — never trigger a boss fight there
+    try {
+      if (this.difficulty !== 'infinity' && !this.bossActive && this.score >= this.bossTriggerScore) {
+        this.startBossFight();
+      }
+    } catch (e) {}
   }
 
   draw() {
@@ -381,28 +428,68 @@ class World {
       ctx.fillStyle = 'gold';
       ctx.font = '40px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Gewonnen!', cx, cy + baseH/2 + 50);
+      ctx.fillText('You Win!', cx, cy + baseH/2 + 50);
 
       // show final numeric score beneath
       ctx.font = '20px monospace';
       ctx.fillStyle = 'white';
-      ctx.fillText('Endscore: ' + (this.score || 0), cx, cy + baseH/2 + 80);
+      ctx.fillText('Final Score: ' + (this.score || 0), cx, cy + baseH/2 + 80);
 
       ctx.restore();
     }
 
-    // draw HUD (top-left): eaten count and current score
+    // draw HUD (top-left): eaten count, current score, elapsed time and progress-to-boss bar
     try {
       const hudX = 12; const hudY = 12;
       const ctx2 = this.ctx;
+      // compute formatted time mm:ss
+      let totalSec = 0;
+      try { totalSec = Math.max(0, Math.round((this.elapsedMs || 0) / 1000)); } catch (e) { totalSec = 0; }
+      const mins = Math.floor(totalSec / 60); const secs = totalSec % 60;
+      const timeStr = `${mins}:${secs.toString().padStart(2,'0')}`;
+      // HUD dimensions
+      const boxW = 340;
+      const boxH = 72; // extra room for progress bar
       ctx2.save();
       ctx2.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx2.fillRect(hudX - 6, hudY - 6, 240, 48);
+      ctx2.fillRect(hudX - 6, hudY - 6, boxW, boxH);
       ctx2.fillStyle = 'white';
       ctx2.font = '14px sans-serif';
       ctx2.textAlign = 'left';
-      ctx2.fillText('Gegessen: ' + (this.enemiesEaten || 0), hudX, hudY + 12);
-      ctx2.fillText('Score: ' + (this.score || 0), hudX, hudY + 32);
+      ctx2.fillText('Gegessen: ' + (this.enemiesEaten || 0), hudX, hudY + 14);
+      ctx2.fillText('Score: ' + (this.score || 0), hudX, hudY + 34);
+  ctx2.fillText('Zeit: ' + timeStr, hudX + 200, hudY + 24);
+  // show current mode/difficulty
+  try { ctx2.fillText('Modus: ' + (this.difficulty || 'normal'), hudX + 200, hudY + 44); } catch (e) {}
+
+      // progress-to-boss bar: map score 2000 -> 0, 120000 -> 1
+      try {
+        const minScore = 2000;
+        // in infinity mode the progress bar reflects the larger soft-cap/boss threshold
+        const maxScore = (this.difficulty === 'infinity') ? (this.bossTriggerScore || 999999) : 120000;
+        const raw = (typeof this.score === 'number') ? this.score : (this.score || 0);
+        let pct = 0;
+        if (raw <= minScore) pct = 0; else if (raw >= maxScore) pct = 1; else pct = (raw - minScore) / (maxScore - minScore);
+        pct = Math.max(0, Math.min(1, pct));
+        const barX = hudX; const barY = hudY + 44; const barW = boxW - 24; const barH = 10;
+        // background track
+        ctx2.fillStyle = 'rgba(255,255,255,0.08)';
+        World._roundRect(ctx2, barX, barY, barW, barH, 6);
+        ctx2.fill();
+        // filled portion with gradient
+        const fillW = Math.round(barW * pct);
+        if (fillW > 0) {
+          const g = ctx2.createLinearGradient(barX, 0, barX + barW, 0);
+          g.addColorStop(0, '#3ab0ff'); g.addColorStop(1, '#00e0a8');
+          ctx2.fillStyle = g;
+          World._roundRect(ctx2, barX, barY, fillW, barH, 6);
+          ctx2.fill();
+        }
+        // percent text small
+        ctx2.fillStyle = 'rgba(255,255,255,0.9)'; ctx2.font = '12px monospace'; ctx2.textAlign = 'right';
+        ctx2.fillText(Math.round(pct * 100) + '%', barX + barW, barY + barH + 12);
+      } catch (e) {}
+
       ctx2.restore();
     } catch (e) {}
 
@@ -444,20 +531,27 @@ class World {
   }
 
   triggerGameOver() {
-    this.gameOver = true;
-    console.log('GAME OVER');
+  this.gameOver = true;
+  // record final elapsed time for external UI
+  try { this._finalElapsedMs = this.elapsedMs || 0; } catch (e) { this._finalElapsedMs = 0; }
+  console.log('GAME OVER');
   }
 
   triggerVictory() {
-    this.victory = true;
-    this._victoryStart = Date.now();
-    console.log('VICTORY!');
+  this.victory = true;
+  // record final elapsed time for external UI (so saves show correct time)
+  try { this._finalElapsedMs = this.elapsedMs || 0; } catch (e) { this._finalElapsedMs = 0; }
+  this._victoryStart = Date.now();
+  console.log('VICTORY!');
   }
 
   // restart the game: reset score, eaten count, enemies, bubbles and flags
   restartGame() {
     // reset basic state
   this.score = 2000;
+  // reset timer
+  this.elapsedMs = 0;
+  this._finalElapsedMs = 0;
     this.enemiesEaten = 0;
     this.gameOver = false;
     this.victory = false;
@@ -484,6 +578,7 @@ class World {
     // kick off population ramp
     this.populateEnemies(0);
     this.running = true;
+  this._startTime = Date.now();
     if (!this._lastTick) this._lastTick = Date.now();
     console.log('Game restarted');
   }
@@ -512,8 +607,8 @@ class World {
     const num = Math.min(requested, allowed);
     if (num <= 0) return; // hit rate limit, skip spawning now
     this._spawnedInWindow += num;
-    // derive current character-equivalent score from its height
-    const minScore = 2000, maxScore = 120000;
+  // derive current character-equivalent score from its height
+  const minScore = 2000, maxScore = this.enemyScoreCap || 120000;
     const minH = 50, maxH = 250;
     const ch = (this.character && this.character.height) ? this.character.height : minH;
     const t = (ch - minH) / (maxH - minH);
@@ -523,8 +618,9 @@ class World {
     const currentCount = this.enemies.filter(e => !(e instanceof Boss) && !e._dead).length;
     const currentEdible = this.enemies.filter(e => !(e instanceof Boss) && !e._dead && typeof e.score === 'number' && e.score <= charScoreEquivalent).length;
 
-    const desiredTotal = currentCount + num;
-    const minEdibleNeeded = Math.ceil(0.3 * desiredTotal);
+  const desiredTotal = currentCount + num;
+  const frac = (typeof this.minEdibleFraction === 'number') ? this.minEdibleFraction : 0.3;
+  const minEdibleNeeded = Math.ceil(frac * desiredTotal);
     let neededEdible = Math.max(0, minEdibleNeeded - currentEdible);
 
     for (let i = 0; i < num; i++) {
@@ -538,9 +634,9 @@ class World {
       const y = Math.random() * (this.canvas.height - 60);
 
       // choose a score: edible -> <= charScoreEquivalent, non-edible -> > charScoreEquivalent
-      const minEnemyScore = 200;
-      const low = minEnemyScore;
-      const high = 120000;
+  const minEnemyScore = 200;
+  const low = minEnemyScore;
+  const high = this.enemyScoreCap || 120000;
       let scoreVal;
       if (makeEdible) {
         // uniform between low..charScoreEquivalent (but at least low)
@@ -551,7 +647,7 @@ class World {
         scoreVal = Math.floor(lower + Math.random() * (high - lower + 1));
       }
 
-      if (type === 'puffer') {
+  if (type === 'puffer') {
         const p = new PufferFish();
         // assign a (mostly) unique speed factor so enemies differ visibly
         try { p.speedFactor = this.getUniqueEnemySpeed(); } catch (e) {}
@@ -561,7 +657,7 @@ class World {
         if (fromRight) { p.x = this.canvas.width + Math.random() * 200; p.vx = -1; }
         else { p.x = -Math.random() * 200 - p.width; p.vx = 1; }
         this.enemies.push(p);
-      } else {
+  } else {
         const j = new JellyFish();
         // assign a (mostly) unique speed factor so enemies differ visibly
         try { j.speedFactor = this.getUniqueEnemySpeed(); } catch (e) {}
@@ -573,6 +669,55 @@ class World {
         this.enemies.push(j);
       }
     }
+  }
+
+  // apply difficulty-based settings: spawn multipliers, caps and special modes
+  applyDifficultySettings() {
+    try {
+      const d = (this.difficulty || 'normal').toString().toLowerCase();
+      // reset to defaults
+      this.spawnMultiplier = 1;
+      this.spawnRateMaxPerSec = 5;
+      this.maxEnemies = 25;
+      this.enemyScoreCap = 120000;
+      this.bossTriggerScore = 120000;
+      // per difficulty tweaks
+      if (d === 'easy') {
+        // fewer spawns, milder enemies
+  this.spawnMultiplier = 0.9;
+  this.spawnRateMaxPerSec = 6; // slightly higher rate so edible fish appear faster
+  this.maxEnemies = 18;
+  // in easy mode the character grows faster: shorten initial ramp duration and increase ramp target
+  try { this._initialRampDuration = Math.max(3000, (this._initialRampDuration || 10000) * 0.4); this._initialRampTarget = Math.max(this._initialRampTarget || 15, Math.round((this._initialRampTarget || 15) * 1.25)); } catch (e) {}
+  // make boss trigger lower so player reaches boss faster in easy mode
+  this.bossTriggerScore = Math.max(30000, Math.round(this.bossTriggerScore * 0.4));
+      } else if (d === 'hard') {
+  // increase concurrent enemies and spawn rate for a denser experience
+  // significantly raise spawn multiplier and per-second cap
+  this.spawnMultiplier = 2.5;
+  this.spawnRateMaxPerSec = 14;
+  // allow many more simultaneous enemies on screen in hard mode
+  this.maxEnemies = Math.max(60, Math.round((this.maxEnemies || 25) * 3));
+  // slightly raise minimum to ensure baseline density
+  try { this.minEnemies = Math.max(18, Math.round((this.minEnemies || 15) * 1.2)); } catch (e) {}
+  // Hard mode: reduce edible fraction to 15% so more tough enemies roam
+  try { this.minEdibleFraction = 0.15; } catch (e) {}
+  // slow the initial growth so difficulty ramps gently (approx 5% of normal target growth)
+  try { this._initialRampDuration = Math.max(15000, (this._initialRampDuration || 10000) * 1.5); this._initialRampTarget = Math.max(this._initialRampTarget || 15, Math.round((this._initialRampTarget || 15) * 0.95)); } catch (e) {}
+      } else if (d === 'infinity') {
+        // extreme mode: score cap raised, shark scales beyond usual, enemies capped lower
+        this.spawnMultiplier = 2;
+        this.spawnRateMaxPerSec = 12;
+        this.maxEnemies = Math.max(40, this.maxEnemies * 2);
+        this.enemyScoreCap = 130000; // enemy fish max at 130k
+        this.bossTriggerScore = 999999; // boss triggers only at huge score
+      } else {
+        // normal
+        this.spawnMultiplier = 1.25;
+        this.spawnRateMaxPerSec = 5;
+        this.maxEnemies = 25;
+      }
+    } catch (e) {}
   }
 
   // generate a speed factor for a newly spawned enemy in range [0.05,1.0]

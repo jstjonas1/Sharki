@@ -3,7 +3,7 @@ class JellyFish extends Enemy {
         super(x, y, width, height, speed, score);
         if (typeof speedFactor === 'number') this.speedFactor = speedFactor;
         this.z = 1;
-        const base = '../assets/img/sharki/2enemy/2jelly_fish/regular_damage/';
+    const base = 'assets/img/sharki/2enemy/2jelly_fish/regular_damage/';
         const paths = ['lila1.png','lila2.png','lila3.png','lila4.png'].map(p => base + p);
         this.loadFrames(paths, 140).catch(() => this.loadImage(base + 'lila1.png'));
     this.vx = this.vx || -1;

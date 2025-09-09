@@ -21,6 +21,7 @@
     <script src="./models/water.class.js" defer></script>
     <script src="./models/bubble.class.js" defer></script>
     <script src="./models/world.class.js" defer></script>
+    <script src="./scripts/highscores.js" defer></script>
     <script src="./js/game.js" defer></script>
 
 </head>
@@ -29,17 +30,36 @@
     <h1>Sharki</h1>
 
     <!-- Start screen: choose Light or Dark mode before starting -->
-    <div id="startScreen" style="position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999;">
-        <div style="background:#fff; padding:20px 24px; border-radius:8px; text-align:center; width:320px;">
-            <h2>Spiel starten</h2>
-            <div style="margin:12px 0; text-align:left;">
-                <label style="display:block; margin-bottom:8px;"><input type="radio" name="startMode" value="light" checked> Lichtmodus</label>
+    <div id="startScreen" style="position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999; padding:12px; box-sizing:border-box;">
+    <div id="startInner" style="background:#fff; padding:18px 20px; border-radius:8px; text-align:center; width:min(420px,96vw); max-height:86vh; overflow:auto; box-sizing:border-box;">
+            <h2 style="margin:0 0 10px">Spiel starten</h2>
+            <div style="margin:8px 0 12px; text-align:left;">
+                <div style="font-size:14px; margin-bottom:6px; font-weight:600">Anzeige</div>
+                <label style="display:block; margin-bottom:6px;"><input type="radio" name="startMode" value="light" checked> Lichtmodus</label>
                 <label style="display:block;"><input type="radio" name="startMode" value="dark"> Dunkelmodus</label>
             </div>
-            <div style="margin-top:14px;">
-                <button id="startBtn" style="padding:8px 14px; font-size:16px;">Start</button>
+
+            <div style="margin:6px 0 12px; text-align:left;">
+                <div style="font-size:14px; margin-bottom:8px; font-weight:600">Schwierigkeit</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <label style="display:inline-block;"><input type="radio" name="difficulty" value="easy"> Easy</label>
+                    <label style="display:inline-block;"><input type="radio" name="difficulty" value="normal" checked> Normal</label>
+                    <label style="display:inline-block;"><input type="radio" name="difficulty" value="hard"> Hard</label>
+                    <label style="display:inline-block;"><input type="radio" name="difficulty" value="infinity"> Infinity</label>
+                </div>
             </div>
-            <p style="font-size:12px; color:#666; margin-top:12px;">Steuerung: Pfeile / WASD bewegen, Leertaste = Fin-Slap, F = Bubble, R = Neustart (nach Game Over)</p>
+
+            <div style="margin-top:8px; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
+                <button id="startBtn" style="padding:10px 16px; font-size:16px;">Start</button>
+                <button id="fullscreenBtn" style="padding:8px 12px; font-size:14px;">Vollbild</button>
+                <!-- Touch mode: enables on-screen crosshair + shoot button; tapping the crosshair will NOT fire, only the shoot button will -->
+                <button id="touchModeBtn" style="padding:8px 12px; font-size:14px; background:linear-gradient(90deg,#00aaff,#0066cc); color:white; border:none; border-radius:6px;">Touch Mode</button>
+            </div>
+
+            <p style="font-size:12px; color:#666; margin-top:12px; margin-bottom:6px; text-align:left;">Steuerung: Pfeile / WASD bewegen, Leertaste = Fin-Slap, F = Bubble, R = Neustart (nach Game Over)</p>
+            <div style="display:flex; gap:8px; justify-content:flex-start; align-items:center; margin-top:6px;">
+                <label style="font-size:12px; color:#666;"><input type="checkbox" id="darkToggleInline" style="margin-right:6px"> Dark Mode</label>
+            </div>
         </div>
     </div>
 
