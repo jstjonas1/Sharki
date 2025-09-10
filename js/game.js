@@ -187,6 +187,12 @@ function showGameOverUI() {
     const secs = world ? Math.round((world._finalElapsedMs || world.elapsedMs || 0) / 1000) : 0;
     const diff = world ? (world.difficulty || 'normal') : 'normal';
     const title = document.createElement('h2'); title.innerText = 'Game Over'; title.style.margin = '0 0 8px';
+    // requested image inside overlay
+    const deadImg = document.createElement('img');
+    deadImg.src = './assets/img/sharki/1sharkie/6dead/1poisoned/9.png';
+    deadImg.alt = 'Sharkie Game Over';
+    deadImg.style.display = 'block'; deadImg.style.margin = '0 auto 8px';
+    deadImg.style.width = '120px'; deadImg.style.height = 'auto';
     const info = document.createElement('div'); info.style.margin = '0 0 12px'; info.innerText = `Score: ${score} • Zeit: ${secs}s • ${diff}`;
     const nameWrap = document.createElement('div'); nameWrap.style.margin = '0 0 10px'; nameWrap.style.textAlign = 'left';
     const nameLbl = document.createElement('label'); nameLbl.innerText = 'Name für Highscore:'; nameLbl.style.display = 'block'; nameLbl.style.marginBottom = '6px';
@@ -197,7 +203,7 @@ function showGameOverUI() {
     const hsBtn = document.createElement('button'); hsBtn.innerText = 'Highscores'; hsBtn.style.padding = '8px 12px';
     const menuBtn = document.createElement('button'); menuBtn.innerText = 'Zum Menü'; menuBtn.style.padding = '8px 12px';
     btnRow.appendChild(hsBtn); btnRow.appendChild(menuBtn);
-    inner.appendChild(title); inner.appendChild(info); inner.appendChild(nameWrap); inner.appendChild(btnRow);
+    inner.appendChild(title); inner.appendChild(deadImg); inner.appendChild(info); inner.appendChild(nameWrap); inner.appendChild(btnRow);
     ov.appendChild(inner);
 
     hsBtn.addEventListener('click', () => {

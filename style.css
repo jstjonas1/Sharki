@@ -8,7 +8,7 @@ body {
     justify-content: center;
     height: 100vh;
     font-family: Arial, sans-serif;
-    background-color: #f0f0f0;
+    background: #000 url('./assets/img/sharki/3background/mesa_de_trabajo_1.png') center center / cover no-repeat fixed;
 }
 
 /* Show pointer cursor for interactive/clickable elements */
