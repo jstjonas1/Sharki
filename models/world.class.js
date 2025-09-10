@@ -1,5 +1,8 @@
+/**
+ * Game world: manages state, update loop, rendering, spawning, and interactions.
+ */
 class World {
-  // small helper to draw rounded rects on canvas
+  /** Draw a rounded rectangle path into a 2D context. */
   static _roundRect(ctx, x, y, w, h, r) {
     if (!ctx) return;
     const radius = typeof r === 'number' ? r : 6;
@@ -15,7 +18,7 @@ class World {
     ctx.quadraticCurveTo(x, y, x + radius, y);
     ctx.closePath();
   }
-  // store light paths; dark paths will be derived and BackgroundObjects created in constructor
+  /** Background light image paths; dark variants are derived at construction. */
   backgroundLightPaths = [
     './assets/img/sharki/3background/layers/5water/l.png',
     './assets/img/sharki/3background/layers/4fondo_2/l.png',
@@ -26,25 +29,25 @@ class World {
   backgroundObjects = [];
   character  = new Character();
   enemies    = [];
-  // gameplay timer (ms)
+  /** Game start timestamp (ms). */
   _startTime = null;
   elapsedMs = 0;
-  // config
+  /** Spawn configuration. */
   minEnemies = 15;
   maxEnemies = 25;
-  // fraction of desired enemies that should be edible (0..1)
+  /** Fraction of enemies that should be edible [0..1]. */
   minEdibleFraction = 0.3;
-  // multiplier to increase spawn counts (set to 2 for approx. double)
+  /** Multiplier to increase requested spawn counts. */
   spawnMultiplier = 2;
-  // maximum enemies that can be spawned per second (rate limit)
+  /** Per-second spawn rate limit. */
   spawnRateMaxPerSec = 5;
-  // difficulty and caps
+  /** Difficulty mode. */
   difficulty = 'normal'; // 'easy' | 'normal' | 'hard' | 'infinity'
-  // enemy score cap (used when generating enemy scores)
+  /** Enemy score cap when generating enemies. */
   enemyScoreCap = 120000;
-  // boss trigger threshold (when reached -> boss fight). Infinity mode increases this.
+  /** Boss trigger score threshold. */
   bossTriggerScore = 120000;
-  // internal rate window
+  /** Internal spawn window tracking. */
   _spawnWindowStart = Date.now();
   _spawnedInWindow = 0;
   spawnSide = 'random';
@@ -54,7 +57,7 @@ class World {
   _spawnInterval = 500; // ms between spawn attempts when below desired (halved to double spawn rate)
   bubbles = [];
   enemiesEaten = 0;
-  // UI & state
+  /** UI & runtime state. */
   paused = false;
   _uiRects = { pause: null, touch: null };
 
@@ -98,14 +101,12 @@ class World {
     // initial population ramp (smoothly go from minEnemies -> initialTarget over duration)
     this._initialRampStart = Date.now();
     this._initialRampDuration = 10000; // ms to reach target
-    this._initialRampTarget = 15; // desired enemies after ramp
-    this.debug = false; // debug HUD toggle
+  this._initialRampTarget = 15; // desired enemies after ramp
 
-    // key to toggle debug HUD: D; restart on R after end-state
+  // key: restart on R after end-state
     try {
       this._kbdHandler = (ev) => {
         if (!ev) return;
-        if (ev.key === 'd' || ev.key === 'D') this.debug = !this.debug;
         if ((ev.key === 'r' || ev.key === 'R') && (this.gameOver || this.victory)) {
           try { this.restartGame(); } catch (e) {}
         }
@@ -527,41 +528,7 @@ class World {
       ctx2.restore();
     } catch (e) {}
 
-    // debug HUD: show enemy count, spawn limit, and sample speeds (toggle with D)
-    try {
-      if (this.debug) {
-        const dbgX = 12; const dbgY = 70;
-        const ctx3 = this.ctx;
-        ctx3.save();
-        ctx3.fillStyle = 'rgba(0,0,0,0.45)';
-        ctx3.fillRect(dbgX - 6, dbgY - 6, 320, 140);
-        ctx3.fillStyle = 'white';
-        ctx3.font = '12px monospace';
-        ctx3.textAlign = 'left';
-        ctx3.fillText('Enemies: ' + (this.enemies ? this.enemies.length : 0) + ' / ' + (this.maxEnemies || 0), dbgX, dbgY + 8);
-        ctx3.fillText('Spawn limit/sec: ' + (this.spawnRateMaxPerSec || 0), dbgX, dbgY + 26);
-        // list up to 8 sample speeds and actual _currentSpeed
-        const samples = (this.enemies || []).slice(0,8).map((e,i) => `${i+1}:${(typeof e._currentSpeed==='number'?Math.round(e._currentSpeed):'n/a')}/${(typeof e.speedFactor==='number'?e.speedFactor.toFixed(2):'n/a')}`);
-        ctx3.fillText('Sample speeds(px/s/f): ' + (samples.length ? samples.join(' ') : 'none'), dbgX, dbgY + 44);
-        ctx3.fillText('SpawnMultiplier: ' + (this.spawnMultiplier||1), dbgX, dbgY + 64);
-        ctx3.fillText('Debug: Toggle with D', dbgX, dbgY + 84);
-        ctx3.restore();
-        // also draw per-enemy numeric speed over each enemy
-        try {
-          this.enemies.forEach((e, idx) => {
-            if (!e || !e._lastDraw) return;
-            const r = e._lastDraw;
-            this.ctx.save();
-            this.ctx.fillStyle = 'white';
-            this.ctx.font = '11px monospace';
-            this.ctx.textAlign = 'center';
-            const txt = (typeof e._currentSpeed === 'number') ? `${Math.round(e._currentSpeed)}px/s` : '';
-            this.ctx.fillText(txt, r.x + r.width/2, r.y - 10);
-            this.ctx.restore();
-          });
-        } catch (e) {}
-      }
-    } catch (e) {}
+  // (developer HUD removed)
   }
 
   triggerGameOver() {

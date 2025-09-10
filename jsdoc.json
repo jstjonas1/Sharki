@@ -1,0 +1,21 @@
+{
+  "source": {
+    "include": [
+      "js",
+      "models"
+    ],
+    "includePattern": ".+\\.js(doc|x)?$",
+    "excludePattern": "(^|\\/)_(?!$)"
+  },
+  "plugins": [],
+  "opts": {
+    "destination": "docs",
+    "recurse": true,
+  "template": ""
+  },
+  "templates": {
+    "default": {
+      "includeDate": false
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "npm-install-jsdoc",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "npm-run-docs",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"docs"
+			],
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "npm-run-docs",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"docs"
+			],
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "npm-run-docs",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"docs"
+			],
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

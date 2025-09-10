@@ -1,0 +1,12 @@
+{
+  "name": "sharky",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sharki game",
+  "scripts": {
+    "docs": "jsdoc -c jsdoc.json"
+  },
+  "devDependencies": {
+    "jsdoc": "^4.0.2"
+  }
+}

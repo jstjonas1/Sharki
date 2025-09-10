@@ -1,11 +1,9 @@
+/** Player character with movement, animations, and actions. */
 class Character extends MovableObject {
     constructor() {
-    // try to load idle animation frames, fall back to single image
     try {
         super();
-    // attempt to load frames from the 1idle folder (up to 18 frames)
     this.loadFramesPattern('./assets/img/sharki/1sharkie/1idle/', ['{i}.png'], 18, 120).catch(() => {
-            // fallback to single image
             this.loadImage('./assets/img/sharki/1sharkie/1idle/1.png').catch(() => {});
         });
     } catch (e) {
@@ -14,28 +12,24 @@ class Character extends MovableObject {
         this.z = 2;
         this.maxHealth = 100;
         this.health = 100;
-        this._attackCooldown = 0; // ms
+        this._attackCooldown = 0;
         this._lastHitTime = 0;
-        this._invulnMs = 1000; // 1s invulnerability after being hit
+        this._invulnMs = 1000;
         this.flipX = false;
-    this.speed = 3; // base speed multiplier
-    // acceleration state
-    this.vx = 0; this.vy = 0; // current velocity vector (unit)
-    this._targetVx = 0; this._targetVy = 0; // desired direction
-    this._accelTime = 500; // ms to reach full speed
-    this._decelTime = 1000; // ms to slow to zero
-    this._velLerp = 0; // internal lerp factor
-        // animation state
+    this.speed = 3;
+    this.vx = 0; this.vy = 0;
+    this._targetVx = 0; this._targetVy = 0;
+    this._accelTime = 500;
+    this._decelTime = 1000;
+    this._velLerp = 0;
         this.animState = 'idle';
         this.animationLoop = true;
         this._onAnimationEnd = null;
-        // preload common animation sets (best-effort)
         try {
             this.loadFramesPattern('./assets/img/sharki/1sharkie/1idle/', ['{i}.png'], 18, 120).catch(() => {});
             this.loadFramesPattern('./assets/img/sharki/1sharkie/2long_idle/', ['i{i}.png','{i}.png'], 14, 180).catch(() => {});
             this.loadFramesPattern('./assets/img/sharki/1sharkie/3swim/', ['{i}.png','i{i}.png'], 7, 90).catch(() => {});
             this.loadFramesPattern('./assets/img/sharki/1sharkie/4attack/fin_slap/', ['{i}.png'], 8, 60).catch(() => {});
-            // bubble_trap contains a single bubble image and some subfolders; try explicit filenames first
             this.loadFramesPattern('./assets/img/sharki/1sharkie/4attack/bubble_trap/', ['bubble.png','poisoned_bubble_for_whale.png','preview.gif'], 1, 80).catch(() => {});
         } catch (e) {}
     }
@@ -65,7 +59,7 @@ class Character extends MovableObject {
         return true;
     }
 
-    // Shoot a bubble: informs the world to spawn a projectile. Bubble deals 1 damage.
+    /** Shoot a bubble projectile. */
     shootBubble() {
         if (this._attackCooldown > 0) return false;
         this._attackCooldown = 400;
@@ -73,7 +67,6 @@ class Character extends MovableObject {
         const bx = this.x + this.width / 2 + dir * (this.width / 2 + 4);
         const by = this.y + this.height / 2;
         if (typeof window !== 'undefined' && window.world && typeof window.world.spawnBubble === 'function') {
-                // deduct 1% of current score as cost for shooting a bubble
                 try {
                     if (typeof window.world.score === 'number') {
                         const cost = Math.max(1, Math.round(window.world.score * 0.01));
@@ -88,7 +81,6 @@ class Character extends MovableObject {
             this.animState = 'attack_bubble';
             this.animationLoop = false;
             this._onAnimationEnd = () => { this.animationLoop = true; this.animState = 'idle'; };
-            // bubble_trap only contains a single bubble image; try explicit names to avoid 404s
             this.loadFramesPattern('./assets/img/sharki/1sharkie/4attack/bubble_trap/', ['bubble.png','poisoned_bubble_for_whale.png','preview.gif'], 1, 80).catch(() => {});
         } catch (e) {}
         return true;

@@ -1,13 +1,38 @@
+/**
+ * Main canvas element reference.
+ * @type {HTMLCanvasElement|null}
+ */
 let canvas;
+/**
+ * Active game world instance.
+ * @type {World|undefined|null}
+ */
 let world;
+/**
+ * Tracks whether the start menu is currently open (prevents end overlays).
+ * @type {boolean}
+ */
 let _menuOpen = false;
 
-// Simple SFX helper with caching and safe play
+/**
+ * Lightweight sound effect helper with simple preload and fire-and-forget playback.
+ * @namespace SFX
+ */
 const SFX = (() => {
     const cache = {};
+    /**
+     * Preload an audio file into memory.
+     * @param {string} key Unique identifier for this sound.
+     * @param {string} src URL to the audio file.
+     */
     function load(key, src) {
         try { const a = new Audio(src); a.preload = 'auto'; cache[key] = a; } catch (e) {}
     }
+    /**
+     * Play a preloaded sound at the specified volume.
+     * @param {string} key Identifier previously loaded with load().
+     * @param {number} [vol=1] Volume in range [0,1].
+     */
     function play(key, vol = 1) {
         try {
             const base = cache[key]; if (!base) return;
@@ -20,7 +45,10 @@ const SFX = (() => {
 })();
 window.SFX = SFX;
 
-// Input state for movement
+/**
+ * Global input state for keyboard and touch controls.
+ * @type {{up:boolean,down:boolean,left:boolean,right:boolean}}
+ */
 window.input = { up: false, down: false, left: false, right: false };
 window.addEventListener('keydown', (e) => {
     const k = (e.key || '').toLowerCase();
@@ -28,7 +56,6 @@ window.addEventListener('keydown', (e) => {
     if (k === 'arrowdown' || k === 's') window.input.down = true;
     if (k === 'arrowleft' || k === 'a') window.input.left = true;
     if (k === 'arrowright' || k === 'd') window.input.right = true;
-    // Actions
     if (world && world.character) {
         if (k === 'f') { world.character.shootBubble(); }
     }
@@ -41,28 +68,34 @@ window.addEventListener('keyup', (e) => {
     if (k === 'arrowright' || k === 'd') window.input.right = false;
 });
 
+/**
+ * Get the value of a checked radio group.
+ * @param {string} name Radio group name.
+ * @param {string} defVal Default when none selected.
+ * @returns {string}
+ */
 function getSelected(name, defVal) {
     const el = document.querySelector('input[name="' + name + '"]:checked');
     return el ? el.value : defVal;
 }
 
+/** Hide the start menu. */
 function hideStartMenu() {
     const ss = document.getElementById('startScreen');
     if (ss) ss.style.display = 'none';
     _menuOpen = false;
 }
 
+/** Show the start menu and restore last selections. */
 function showStartMenu() {
     const ss = document.getElementById('startScreen');
     if (!ss) return;
-    // hide any overlays proactively
     try { hideHighscoresUI(); } catch (e) {}
     try { hideGameOverUI(); } catch (e) {}
     ss.style.display = 'flex';
     ss.style.pointerEvents = 'auto';
     ss.style.zIndex = '10010';
     _menuOpen = true;
-    // restore saved selections
     try {
         const savedMode = localStorage.getItem('sharkyStartMode');
         if (savedMode) {
@@ -80,14 +113,18 @@ function showStartMenu() {
     } catch (e) {}
 }
 
+/**
+ * Apply and persist dark mode, and sync toggles.
+ * @param {boolean} checked
+ */
 function applyDarkModeUI(checked) {
     try { localStorage.setItem('sharkyDarkMode', checked ? '1' : '0'); } catch (e) {}
     if (world && typeof world.setDarkMode === 'function') world.setDarkMode(checked);
-    // sync both toggles
     const d1 = document.getElementById('darkToggleInline'); if (d1) d1.checked = checked;
     const d2 = document.getElementById('darkToggle'); if (d2) d2.checked = checked;
 }
 
+/** Create a fresh world instance and start the game. */
 function startGame() {
     canvas = document.getElementById('gameCanvas');
     if (!canvas) return;
@@ -96,8 +133,6 @@ function startGame() {
     try { localStorage.setItem('sharkyStartMode', mode); } catch (e) {}
     try { localStorage.setItem('sharkyDifficulty', difficulty); } catch (e) {}
     try { localStorage.setItem('sharkyDarkMode', mode === 'dark' ? '1' : '0'); } catch (e) {}
-
-    // Always reset the entire game state: dispose old world, clear overlays, create fresh world
     try { hideHighscoresUI(); } catch (e) {}
     try { hideGameOverUI(); } catch (e) {}
     if (world) {
@@ -117,39 +152,26 @@ function startGame() {
     hideStartMenu();
 }
 
+/** Initialize UI wiring, overlays, and preload assets. */
 function init() {
-    // cache canvas
     canvas = document.getElementById('gameCanvas');
-
-    // hide touch button (feature removed)
     const tbtn = document.getElementById('touchModeBtn');
     if (tbtn) tbtn.style.display = 'none';
-
-    // load saved UI selections
     showStartMenu();
-
-    // wire start button
     const startBtn = document.getElementById('startBtn');
     if (startBtn) startBtn.addEventListener('click', startGame);
-
-    // wire dark toggles
     const d1 = document.getElementById('darkToggleInline');
     const d2 = document.getElementById('darkToggle');
     if (d1) d1.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
     if (d2) d2.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
-
-    // wire restart button
     const r = document.getElementById('restartBtn');
     if (r) r.addEventListener('click', () => { if (world) world.restartGame(); });
 
-            // monitor for game over to show minimal UI
-        monitorEndState();
+    monitorEndState();
+    ensurePauseOverlay();
+    ensureTouchOverlay();
 
-        // ensure overlays exist
-        ensurePauseOverlay();
-        ensureTouchOverlay();
-
-        // preload sounds
+        
         try {
             SFX.load('blub', './audio/blub.mp3');
             SFX.load('essen', './audio/essen.mp3');
@@ -159,7 +181,7 @@ function init() {
 // Expose for inline onload
 window.init = init;
 
-// ---------------- Minimal Game Over + Highscores UI ----------------
+/** Minimal Game Over + Highscores UI monitor and builders. */
 let _endUiVisible = false;
 let _suppressEndOverlayUntil = 0;
 
@@ -182,6 +204,11 @@ function monitorEndState() {
     requestAnimationFrame(tick);
 }
 
+/**
+ * Ensure a full-screen overlay container exists.
+ * @param {string} id Element id.
+ * @returns {HTMLDivElement}
+ */
 function buildOverlay(id) {
     let el = document.getElementById(id);
     if (el) return el;
@@ -192,7 +219,7 @@ function buildOverlay(id) {
     el.style.display = 'none';
     el.style.alignItems = 'center'; el.style.justifyContent = 'center';
     el.style.background = 'rgba(0,0,0,0.7)'; el.style.color = 'white';
-    el.style.zIndex = '10010'; // above touch overlay (9000)
+    el.style.zIndex = '10010';
     document.body.appendChild(el);
     return el;
 }
@@ -211,7 +238,6 @@ function showGameOverUI() {
     const secs = world ? Math.round((world._finalElapsedMs || world.elapsedMs || 0) / 1000) : 0;
     const diff = world ? (world.difficulty || 'normal') : 'normal';
     const title = document.createElement('h2'); title.innerText = 'Game Over'; title.style.margin = '0 0 8px';
-    // requested image inside overlay
     const deadImg = document.createElement('img');
     deadImg.src = './assets/img/sharki/1sharkie/6dead/1poisoned/9.png';
     deadImg.alt = 'Sharkie Game Over';
@@ -273,7 +299,6 @@ function showHighscoresUI() {
     close.addEventListener('click', () => { hideHighscoresUI(); });
     inner.appendChild(title); inner.appendChild(list); inner.appendChild(close);
     ov.appendChild(inner);
-    // populate
     try {
         let arr = (typeof getTopHighscores === 'function') ? (getTopHighscores(10, false) || []) : [];
         list.innerHTML = '';
@@ -296,7 +321,7 @@ function hideHighscoresUI() {
     if (ov) ov.style.display = 'none';
 }
 
-    // ---------------- Pause Overlay ----------------
+    /** Create Pause overlay if missing. */
     function ensurePauseOverlay() {
         if (document.getElementById('pauseOverlay')) return;
         const ov = document.createElement('div');
@@ -315,25 +340,22 @@ function hideHighscoresUI() {
     function hidePauseOverlay() { const ov = document.getElementById('pauseOverlay'); if (ov) ov.style.display = 'none'; }
     window.showPauseOverlay = showPauseOverlay; window.hidePauseOverlay = hidePauseOverlay;
 
-    // ---------------- Touch Controls Overlay (manual ON/OFF) ----------------
+    /** Create Touch Controls overlay if missing. */
     let _touchButtons = null;
     function ensureTouchOverlay() {
         if (document.getElementById('touchOverlay')) return;
         const ov = document.createElement('div'); ov.id = 'touchOverlay';
         ov.style.position = 'fixed'; ov.style.left = '0'; ov.style.top = '0'; ov.style.width = '100%'; ov.style.height = '100%';
         ov.style.pointerEvents = 'none'; ov.style.display = 'none'; ov.style.zIndex = '9000';
-        // left: movement (up/down/left/right)
         const pad = document.createElement('div'); pad.style.position = 'absolute'; pad.style.left = '16px'; pad.style.bottom = '16px'; pad.style.width = '180px'; pad.style.height = '180px'; pad.style.pointerEvents = 'auto';
         const mkBtn = (label, x, y) => { const b = document.createElement('button'); b.innerText = label; b.style.position = 'absolute'; b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.opacity = '0.75'; b.style.borderRadius = '50%'; b.style.width = '60px'; b.style.height = '60px'; b.style.border = '1px solid rgba(255,255,255,0.2)'; b.style.background = 'rgba(0,0,0,0.35)'; b.style.color='white'; b.style.touchAction='none'; return b; };
         const bUp = mkBtn('↑', 60, 0), bDown = mkBtn('↓', 60, 120), bLeft = mkBtn('←', 0, 60), bRight = mkBtn('→', 120, 60);
         pad.appendChild(bUp); pad.appendChild(bDown); pad.appendChild(bLeft); pad.appendChild(bRight);
-        // right: action (bubble only)
         const act = document.createElement('div'); act.style.position='absolute'; act.style.right='16px'; act.style.bottom='16px'; act.style.width='200px'; act.style.height='120px'; act.style.pointerEvents='auto';
         const bBubble = mkBtn('Bubble', 60, 0); bBubble.style.borderRadius='12px'; bBubble.style.width='100px'; bBubble.style.height='60px';
         act.appendChild(bBubble);
         ov.appendChild(pad); ov.appendChild(act); document.body.appendChild(ov);
 
-        // wire touch/mouse press & release to window.input/actions
         const press = (btn, on, off) => {
             const down = (e) => { e.preventDefault(); on(); };
             const up = (e) => { e.preventDefault(); off(); };
@@ -350,7 +372,7 @@ function hideHighscoresUI() {
 
         _touchButtons = { pad, act };
     }
-    // --- Touch full-screen + orientation handling ---
+    /** Touch full-screen and orientation handling state. */
     let _noScrollActive = false;
     let _touchResizeHandler = null;
     let _touchOrientHandler = null;
@@ -409,6 +431,7 @@ function hideHighscoresUI() {
         canvas.style.height = s.height || '';
         canvas.style.zIndex = s.zIndex || '';
     }
+    /** Resize the canvas element to fill the current viewport. */
     function resizeCanvasToViewport() {
         if (!canvas) return;
         canvas.style.position = 'fixed';
@@ -417,6 +440,7 @@ function hideHighscoresUI() {
         canvas.style.zIndex = '0';
         try { canvas.width = window.innerWidth || 0; canvas.height = window.innerHeight || 0; } catch (e) {}
     }
+    /** Enter fullscreen on the document body if supported. */
     async function enterFullscreen() {
         try {
             const el = document.body || document.documentElement || canvas;
@@ -425,9 +449,11 @@ function hideHighscoresUI() {
             }
         } catch (e) {}
     }
+    /** Exit fullscreen if currently active. */
     async function exitFullscreen() {
         try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (e) {}
     }
+    /** Attach resize/orientation listeners for touch mode. */
     function attachTouchModeListeners() {
         if (_touchResizeHandler || _touchOrientHandler) return;
         _touchResizeHandler = () => {
@@ -442,12 +468,17 @@ function hideHighscoresUI() {
         try { window.addEventListener('resize', _touchResizeHandler); } catch (e) {}
         try { window.addEventListener('orientationchange', _touchOrientHandler); } catch (e) {}
     }
+    /** Detach touch mode listeners. */
     function detachTouchModeListeners() {
         try { if (_touchResizeHandler) window.removeEventListener('resize', _touchResizeHandler); } catch (e) {}
         try { if (_touchOrientHandler) window.removeEventListener('orientationchange', _touchOrientHandler); } catch (e) {}
         _touchResizeHandler = null; _touchOrientHandler = null;
     }
 
+    /**
+     * Toggle the touch overlay, fullscreen behavior and orientation enforcement.
+     * @param {boolean} on
+     */
     async function setTouchOverlayOn(on) {
         window.__touchOverlayOn = !!on;
         ensureRotateOverlay();
