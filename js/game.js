@@ -381,7 +381,10 @@ function hideHighscoresUI() {
         if (document.getElementById('touchOverlay')) return;
         const ov = document.createElement('div'); ov.id = 'touchOverlay';
         ov.style.position = 'fixed'; ov.style.left = '0'; ov.style.top = '0'; ov.style.width = '100%'; ov.style.height = '100%';
-        ov.style.pointerEvents = 'none'; ov.style.display = 'none'; ov.style.zIndex = '9000';
+    ov.style.pointerEvents = 'none'; ov.style.display = 'none'; ov.style.zIndex = '9000';
+    ov.style.webkitTouchCallout = 'none';
+    ov.style.webkitUserSelect = 'none';
+    ov.style.userSelect = 'none';
         const pad = document.createElement('div'); pad.style.position = 'absolute'; pad.style.left = '16px'; pad.style.bottom = '16px'; pad.style.width = '180px'; pad.style.height = '180px'; pad.style.pointerEvents = 'auto';
         const mkBtn = (label, x, y) => { const b = document.createElement('button'); b.innerText = label; b.style.position = 'absolute'; b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.opacity = '0.75'; b.style.borderRadius = '50%'; b.style.width = '60px'; b.style.height = '60px'; b.style.border = '1px solid rgba(255,255,255,0.2)'; b.style.background = 'rgba(0,0,0,0.35)'; b.style.color='white'; b.style.touchAction='none'; return b; };
         const bUp = mkBtn('↑', 60, 0), bDown = mkBtn('↓', 60, 120), bLeft = mkBtn('←', 0, 60), bRight = mkBtn('→', 120, 60);
@@ -394,6 +397,13 @@ function hideHighscoresUI() {
         const press = (btn, on, off) => {
             const down = (e) => { e.preventDefault(); on(); };
             const up = (e) => { e.preventDefault(); off(); };
+            // Prevent iOS long-press context/callout and text selection
+            btn.addEventListener('contextmenu', (e) => e.preventDefault());
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); });
+            btn.addEventListener('gesturestart', (e) => { try { e.preventDefault(); } catch(_){} });
+            btn.addEventListener('gesturechange', (e) => { try { e.preventDefault(); } catch(_){} });
+            btn.addEventListener('gestureend', (e) => { try { e.preventDefault(); } catch(_){} });
             btn.addEventListener('pointerdown', down);
             btn.addEventListener('pointerup', up);
             btn.addEventListener('pointerleave', up);

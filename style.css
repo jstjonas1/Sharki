@@ -24,3 +24,10 @@ button, a, input[type="button"], input[type="submit"], input[type="checkbox"], [
 button:disabled, input[disabled] {
     cursor: not-allowed;
 }
+
+/* Prevent iOS touch callout and text selection inside the touch overlay */
+#touchOverlay, #touchOverlay * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
