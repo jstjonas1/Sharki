@@ -81,6 +81,7 @@ class Character extends MovableObject {
                     }
                 } catch (e) {}
                 window.world.spawnBubble(bx, by, dir);
+                try { if (window.SFX) window.SFX.play('blub', 0.8); } catch (e) {}
         }
         // play bubble-shoot animation (non-looping) at 80ms per frame
         try {

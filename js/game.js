@@ -2,6 +2,24 @@ let canvas;
 let world;
 let _menuOpen = false;
 
+// Simple SFX helper with caching and safe play
+const SFX = (() => {
+    const cache = {};
+    function load(key, src) {
+        try { const a = new Audio(src); a.preload = 'auto'; cache[key] = a; } catch (e) {}
+    }
+    function play(key, vol = 1) {
+        try {
+            const base = cache[key]; if (!base) return;
+            const node = base.cloneNode();
+            node.volume = Math.max(0, Math.min(1, vol));
+            node.play().catch(() => {});
+        } catch (e) {}
+    }
+    return { load, play };
+})();
+window.SFX = SFX;
+
 // Input state for movement
 window.input = { up: false, down: false, left: false, right: false };
 window.addEventListener('keydown', (e) => {
@@ -130,6 +148,12 @@ function init() {
         // ensure overlays exist
         ensurePauseOverlay();
         ensureTouchOverlay();
+
+        // preload sounds
+        try {
+            SFX.load('blub', './audio/blub.mp3');
+            SFX.load('essen', './audio/essen.mp3');
+        } catch (e) {}
 }
 
 // Expose for inline onload

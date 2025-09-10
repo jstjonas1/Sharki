@@ -246,6 +246,8 @@ class World {
             e._dead = true;
             // track eaten enemies
             this.enemiesEaten = (this.enemiesEaten || 0) + 1;
+            // play eat sound
+            try { if (window.SFX) window.SFX.play('essen', 0.9); } catch (err) {}
             // calculate gained points depending on difficulty
             let baseFraction = 0.2;
             try {
