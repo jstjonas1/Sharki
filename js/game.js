@@ -162,16 +162,51 @@ function init() {
     if (startBtn) startBtn.addEventListener('click', startGame);
     const d1 = document.getElementById('darkToggleInline');
     const d2 = document.getElementById('darkToggle');
+    const touchToggle = document.getElementById('touchToggle');
     if (d1) d1.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
     if (d2) d2.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
     const r = document.getElementById('restartBtn');
     if (r) r.addEventListener('click', () => { if (world) world.restartGame(); });
+    // Manual Touch toggle: when user toggles, disable auto and reflect in overlay
+    window.__userAutoDisabled = false;
+    window.__userForcedTouch = undefined; // undefined means no user override yet
+    if (touchToggle) {
+        touchToggle.addEventListener('change', (e) => {
+            const want = !!e.target.checked;
+            window.__userAutoDisabled = true;
+            window.__userForcedTouch = want;
+            try { localStorage.setItem('sharkyTouchForced', want ? '1' : '0'); } catch (err) {}
+            if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(want);
+        });
+    }
 
     monitorEndState();
     ensurePauseOverlay();
     ensureTouchOverlay();
 
         
+        // Restore manual preference if stored
+        try {
+            const saved = localStorage.getItem('sharkyTouchForced');
+            if (saved === '1' || saved === '0') {
+                window.__userAutoDisabled = true;
+                window.__userForcedTouch = (saved === '1');
+                if (touchToggle) touchToggle.checked = (saved === '1');
+                if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(saved === '1');
+            }
+        } catch (e) {}
+        // One-time auto check: if viewport smaller than canvas, enable touch initially (only if no manual pref).
+        try {
+            const nominal = { w: 720, h: 480 };
+            const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+            const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+            const needTouch = (vw < nominal.w) || (vh < nominal.h);
+            if (!window.__userAutoDisabled && typeof window.__userForcedTouch === 'undefined') {
+                if (touchToggle) touchToggle.checked = !!needTouch;
+                if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(!!needTouch);
+            }
+        } catch (e) {}
+
         try {
             SFX.load('blub', './audio/blub.mp3');
             SFX.load('essen', './audio/essen.mp3');
@@ -481,6 +516,7 @@ function hideHighscoresUI() {
      */
     async function setTouchOverlayOn(on) {
         window.__touchOverlayOn = !!on;
+    try { const t = document.getElementById('touchToggle'); if (t) t.checked = !!on; } catch (e) {}
         ensureRotateOverlay();
         const ov = document.getElementById('touchOverlay');
         if (ov) ov.style.display = on ? 'block' : 'none';

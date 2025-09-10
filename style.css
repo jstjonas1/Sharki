@@ -1,5 +1,9 @@
 canvas {
     background-color: rgb(0, 0, 0);
+    /* Responsive scaling while preserving aspect ratio */
+    max-width: 100%;
+    height: auto;
+    display: block;
 }
 body {
     display: flex;

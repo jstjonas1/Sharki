@@ -749,6 +749,8 @@ class World {
         try {
           const current = !!window.__touchOverlayOn;
           const next = !current;
+          // manual user interaction disables auto and sets explicit preference
+          try { window.__userAutoDisabled = true; window.__userForcedTouch = next; } catch (e) {}
           if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(next);
           else window.__touchOverlayOn = next;
         } catch (e) { window.__touchOverlayOn = !window.__touchOverlayOn; }
