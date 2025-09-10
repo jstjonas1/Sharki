@@ -54,6 +54,9 @@ class World {
   _spawnInterval = 500; // ms between spawn attempts when below desired (halved to double spawn rate)
   bubbles = [];
   enemiesEaten = 0;
+  // UI & state
+  paused = false;
+  _uiRects = { pause: null, touch: null };
 
   // constructor: initialize instance with canvas and options
   constructor(canvas, options = {}) {
@@ -98,15 +101,22 @@ class World {
     this._initialRampTarget = 15; // desired enemies after ramp
     this.debug = false; // debug HUD toggle
 
-    // key to toggle debug HUD: D
+    // key to toggle debug HUD: D; restart on R after end-state
     try {
-      window.addEventListener('keydown', (ev) => {
+      this._kbdHandler = (ev) => {
         if (!ev) return;
         if (ev.key === 'd' || ev.key === 'D') this.debug = !this.debug;
         if ((ev.key === 'r' || ev.key === 'R') && (this.gameOver || this.victory)) {
           try { this.restartGame(); } catch (e) {}
         }
-      });
+      };
+      window.addEventListener('keydown', this._kbdHandler);
+    } catch (e) {}
+
+    // canvas UI: handle clicks on Pause button and Touch slider
+    try {
+      this._onCanvasPointer = (ev) => this._handleCanvasPointer(ev);
+      this.canvas.addEventListener('pointerdown', this._onCanvasPointer);
     } catch (e) {}
 
     // position character in canvas center (use character size or defaults)
@@ -124,6 +134,13 @@ class World {
     if (this._autoStart) {
       this.start();
     }
+  }
+
+  // Clean up listeners to allow safe disposal/recreation
+  destroy() {
+    try { if (this._kbdHandler) window.removeEventListener('keydown', this._kbdHandler); } catch (e) {}
+  try { if (this._onCanvasPointer) this.canvas.removeEventListener('pointerdown', this._onCanvasPointer); } catch (e) {}
+    this.running = false;
   }
 
   // start the world's main loop (useful to defer until assets loaded)
@@ -153,7 +170,7 @@ class World {
   update(dt) {
   // update timer before pausing for game over/victory
   try { if (this.running && !this.gameOver && !this.victory) { this.elapsedMs = (this.elapsedMs || 0) + dt; } } catch (e) {}
-  if (this.gameOver || this.victory) return; // pause updates when game over or victory
+  if (this.gameOver || this.victory || this.paused) return; // pause updates when game over, victory, or paused
     // update character
   if (this.character && typeof this.character.update === 'function') this.character.update(dt);
     // update enemies
@@ -306,11 +323,23 @@ class World {
   // ensure enemies sizes are consistent with their score mapping (so same-score => same-height)
   this.enemies.forEach(e => { if (typeof e.applySizeFromScore === 'function') e.applySizeFromScore(); });
 
-    // boss fight trigger (respect dynamic bossTriggerScore)
+    // boss fight trigger: only when the progress-to-boss bar reaches 100% (mapped to 120000 points)
     // Infinity mode has no boss — never trigger a boss fight there
     try {
-      if (this.difficulty !== 'infinity' && !this.bossActive && this.score >= this.bossTriggerScore) {
-        this.startBossFight();
+      if (this.difficulty !== 'infinity' && !this.bossActive) {
+        // progress mapping uses 2000 -> 0 and 120000 -> 1
+        const _minScore = 2000;
+        const _maxForProgress = 120000; // explicit 120k requirement for full progress
+        const raw = (typeof this.score === 'number') ? this.score : 0;
+        let pct = 0;
+        if (raw <= _minScore) pct = 0;
+        else if (raw >= _maxForProgress) pct = 1;
+        else pct = (raw - _minScore) / (_maxForProgress - _minScore);
+        pct = Math.max(0, Math.min(1, pct));
+        // require the progress bar to be full (100%) and score to be at least 120000
+        if (pct >= 1 && raw >= 120000) {
+          this.startBossFight();
+        }
       }
     } catch (e) {}
   }
@@ -352,6 +381,9 @@ class World {
     if (this.character) {
       if (typeof this.character.drawTo === 'function') this.character.drawTo(this.ctx); else this.addToMap(this.character);
     }
+
+  // draw top-right UI: Pause button and Touch slider
+  try { this._drawTopRightUi(this.ctx); } catch (e) {}
 
     // draw game over overlay if active
   if (this.gameOver) {
@@ -669,6 +701,91 @@ class World {
         this.enemies.push(j);
       }
     }
+  }
+
+  _drawTopRightUi(ctx) {
+        if (!ctx) return;
+        const pad = 10;
+        const btnH = 30;
+        const pauseW = 70; // "Pause" or "Weiter"
+        const gap = 10;
+        const sliderW = 90; // Touch: On/Off
+        const x2 = this.canvas.width - pad;
+        const y = pad;
+        // Pause button rect
+        const px = x2 - pauseW;
+        const py = y;
+        // Slider rect next to pause (left of it)
+        const sx = px - gap - sliderW;
+        const sy = y;
+        // Store rects for hit-testing (canvas coordinates)
+        this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
+        this._uiRects.touch = { x: sx, y: sy, w: sliderW, h: btnH };
+
+        // Draw Touch slider
+        ctx.save();
+        World._roundRect(ctx, sx, sy, sliderW, btnH, 6);
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
+        const overlayOn = (typeof window !== 'undefined' && window.__touchOverlayOn) ? true : false;
+        const knobW = Math.round(sliderW * 0.45);
+        const knobPad = 3;
+        const knobX = overlayOn ? (sx + sliderW - knobW - knobPad) : (sx + knobPad);
+        const knobY = sy + knobPad;
+        const knobH = btnH - knobPad * 2;
+        World._roundRect(ctx, knobX, knobY, knobW, knobH, 6);
+        ctx.fillStyle = overlayOn ? '#2ecc71' : '#7f8c8d';
+        ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(overlayOn ? 'Touch: ON' : 'Touch: OFF', sx + sliderW / 2, sy + btnH / 2);
+        ctx.restore();
+
+        // Draw Pause/Resume button
+        ctx.save();
+        World._roundRect(ctx, px, py, pauseW, btnH, 6);
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
+        ctx.fillStyle = 'white';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.paused ? 'Weiter' : 'Pause', px + pauseW / 2, py + btnH / 2);
+        ctx.restore();
+      }
+  _handleCanvasPointer(ev) {
+    try {
+      if (!this._uiRects || (!this._uiRects.pause && !this._uiRects.touch)) return;
+      const rect = this.canvas.getBoundingClientRect();
+      const scaleX = this.canvas.width / rect.width;
+      const scaleY = this.canvas.height / rect.height;
+      const x = (ev.clientX - rect.left) * scaleX;
+      const y = (ev.clientY - rect.top) * scaleY;
+      const hit = (r) => r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+      if (hit(this._uiRects.pause)) {
+        ev.preventDefault(); ev.stopPropagation();
+        this.paused = !this.paused;
+        try {
+          if (this.paused && typeof window.showPauseOverlay === 'function') window.showPauseOverlay();
+          if (!this.paused && typeof window.hidePauseOverlay === 'function') window.hidePauseOverlay();
+        } catch (e) {}
+        return;
+      }
+      if (hit(this._uiRects.touch)) {
+        ev.preventDefault(); ev.stopPropagation();
+        try {
+          const current = !!window.__touchOverlayOn;
+          const next = !current;
+          if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(next);
+          else window.__touchOverlayOn = next;
+        } catch (e) { window.__touchOverlayOn = !window.__touchOverlayOn; }
+        return;
+      }
+    } catch (e) {}
   }
 
   // apply difficulty-based settings: spawn multipliers, caps and special modes
