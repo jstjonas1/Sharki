@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8" />
@@ -30,17 +30,17 @@
     <h1>Sharki</h1>
 
     <!-- Start screen: choose Light or Dark mode before starting -->
-    <div id="startScreen" style="position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999; padding:12px; box-sizing:border-box;">
-    <div id="startInner" style="background:#fff; padding:18px 20px; border-radius:8px; text-align:center; width:min(420px,96vw); max-height:86vh; overflow:auto; box-sizing:border-box;">
-            <h2 style="margin:0 0 10px">Spiel starten</h2>
+    <div id="startScreen">
+    <div id="startInner">
+            <h2 style="margin:0 0 10px">Start Game</h2>
             <div style="margin:8px 0 12px; text-align:left;">
-                <div style="font-size:14px; margin-bottom:6px; font-weight:600">Anzeige</div>
-                <label style="display:block; margin-bottom:6px;"><input type="radio" name="startMode" value="light" checked> Lichtmodus</label>
-                <label style="display:block;"><input type="radio" name="startMode" value="dark"> Dunkelmodus</label>
+                <div style="font-size:14px; margin-bottom:6px; font-weight:600">World</div>
+                <label style="display:block; margin-bottom:6px;"><input type="radio" name="startMode" value="light" checked> Daymode</label>
+                <label style="display:block;"><input type="radio" name="startMode" value="dark"> Darkmode</label>
             </div>
 
             <div style="margin:6px 0 12px; text-align:left;">
-                <div style="font-size:14px; margin-bottom:8px; font-weight:600">Schwierigkeit</div>
+                <div style="font-size:14px; margin-bottom:8px; font-weight:600">Mode</div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                     <label style="display:inline-block;"><input type="radio" name="difficulty" value="easy"> Easy</label>
                     <label style="display:inline-block;"><input type="radio" name="difficulty" value="normal" checked> Normal</label>
@@ -49,26 +49,38 @@
                 </div>
             </div>
 
+            <div style="margin:6px 0 12px; text-align:left;">
+                <div style="font-size:14px; margin-bottom:8px; font-weight:600">Sound</div>
+                <label style="display:block; margin-bottom:8px;"><input type="checkbox" id="muteToggleInline"> Mute</label>
+                <label style="display:block; margin-bottom:4px;">Volume: <span id="volLabel">100%</span></label>
+                <input type="range" id="volumeRange" min="0" max="100" value="100" style="width:100%;" />
+            </div>
+
+            <div style="margin:6px 0 12px; text-align:left;">
+                <div style="font-size:14px; margin-bottom:8px; font-weight:600">Music</div>
+                <label style="display:block; margin-bottom:8px;"><input type="checkbox" id="musicMuteToggle"> Mute music</label>
+                <label style="display:block; margin-bottom:4px;">Music volume: <span id="musicVolLabel">100%</span></label>
+                <input type="range" id="musicVolumeRange" min="0" max="100" value="100" style="width:100%;" />
+            </div>
+
             <div style="margin-top:8px; display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap;">
                 <button id="startBtn" style="padding:12px 18px; font-size:18px; background:linear-gradient(90deg,#00d4ff,#0077cc); color:white; border:none; border-radius:14px; box-shadow:0 6px 18px rgba(0,0,0,0.25); cursor:pointer;">Start</button>
             </div>
 
-            <p style="font-size:12px; color:#666; margin-top:12px; margin-bottom:6px; text-align:left;">Steuerung: Pfeile / WASD bewegen, Leertaste = Fin-Slap, F = Bubble, R = Neustart (nach Game Over)</p>
-            <div style="display:flex; gap:8px; justify-content:flex-start; align-items:center; margin-top:6px;">
-                <label style="font-size:12px; color:#666;"><input type="checkbox" id="darkToggleInline" style="margin-right:6px"> Dark Mode</label>
-            </div>
+            <p style="font-size:12px; color:#666; margin-top:12px; margin-bottom:6px; text-align:left;">Controls: Arrows / WASD movement, F = Bubble shoot, R = Restart (after Game Over)</p>
+            
         </div>
     </div>
 
     <canvas id="gameCanvas" width="720" height="480"></canvas>
-    <div id="controls" style="text-align:center; margin-top:8px;">
+    <div id="controls" style="text-align:center; margin-top:8px;color: #ffffff;">
         <label><input type="checkbox" id="darkToggle"> Dark Mode</label>
-    <label style="margin-left:12px;"><input type="checkbox" id="touchToggle"> Touch Modus</label>
-    <button id="restartBtn" style="margin-left:12px; padding:6px 10px;">Neustart</button>
+    <label style="margin-left:12px;color: #ffffff;"><input type="checkbox" id="touchToggle"> Touch mode</label>
+    <button id="restartBtn" style="margin-left:12px; padding:6px 10px;border-radius: 8px;">Restart</button>
     </div>
 
     <footer style="margin-top:16px; font-size:12px;">
-        <a href="./impressum.html" style="color:#fff; text-decoration:underline;">Impressum</a>
+    <a href="./impressum.html" style="color:#fff; text-decoration:underline;">Legal Notice</a>
     </footer>
 
 </body>

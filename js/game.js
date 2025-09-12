@@ -20,6 +20,7 @@ let _menuOpen = false;
  */
 const SFX = (() => {
     const cache = {};
+    const state = { volume: 1, muted: false };
     /**
      * Preload an audio file into memory.
      * @param {string} key Unique identifier for this sound.
@@ -37,13 +38,94 @@ const SFX = (() => {
         try {
             const base = cache[key]; if (!base) return;
             const node = base.cloneNode();
-            node.volume = Math.max(0, Math.min(1, vol));
+            const local = Math.max(0, Math.min(1, vol));
+            const master = Math.max(0, Math.min(1, state.volume || 0));
+            node.volume = state.muted ? 0 : Math.max(0, Math.min(1, local * master));
             node.play().catch(() => {});
         } catch (e) {}
     }
-    return { load, play };
+    function setVolume(v) {
+        const nv = (typeof v === 'number') ? v : 1;
+        state.volume = Math.max(0, Math.min(1, nv));
+        try { localStorage.setItem('sharkyVolume', String(Math.round(state.volume * 100))); } catch (_) {}
+    }
+    function setMuted(m) {
+        state.muted = !!m;
+        try { localStorage.setItem('sharkyMuted', state.muted ? '1' : '0'); } catch (_) {}
+    }
+    function getVolume() { return Math.max(0, Math.min(1, state.volume || 0)); }
+    function isMuted() { return !!state.muted; }
+    // initialize from storage if present
+    try {
+        const mv = parseInt(localStorage.getItem('sharkyVolume') || '100', 10);
+        if (!isNaN(mv)) state.volume = Math.max(0, Math.min(1, mv / 100));
+        const mm = localStorage.getItem('sharkyMuted');
+        if (mm === '1' || mm === '0') state.muted = (mm === '1');
+    } catch (_) {}
+    return { load, play, setVolume, setMuted, getVolume, isMuted };
 })();
 window.SFX = SFX;
+
+/**
+ * Background music controller with separate volume/mute and autoplay fallback.
+ * @namespace BGM
+ */
+const BGM = (() => {
+    let audio = null;
+    const state = { volume: 1, muted: false, started: false, _resumeHooked: false };
+    const SRC = './audio/music.mp3';
+    function _ensureAudio() {
+        if (!audio) {
+            try {
+                audio = new Audio(SRC);
+                audio.preload = 'auto';
+                audio.loop = true;
+                _applyVolume();
+            } catch (e) { audio = null; }
+        }
+    }
+    function _applyVolume() { if (audio) audio.volume = state.muted ? 0 : Math.max(0, Math.min(1, state.volume || 0)); }
+    async function ensureStarted() {
+        try {
+            _ensureAudio(); if (!audio) return;
+            if (state.started && !audio.paused) return;
+            await audio.play();
+            state.started = true;
+        } catch (e) { /* likely autoplay blocked */ }
+    }
+    function setVolume(v) {
+        const nv = (typeof v === 'number') ? v : 1;
+        state.volume = Math.max(0, Math.min(1, nv));
+        try { localStorage.setItem('sharkyMusicVolume', String(Math.round(state.volume * 100))); } catch (_) {}
+        _applyVolume();
+    }
+    function setMuted(m) {
+        state.muted = !!m;
+        try { localStorage.setItem('sharkyMusicMuted', state.muted ? '1' : '0'); } catch (_) {}
+        _applyVolume();
+    }
+    function isMuted() { return !!state.muted; }
+    function getVolume() { return Math.max(0, Math.min(1, state.volume || 0)); }
+    function hookAutoResume() {
+        if (state._resumeHooked) return; state._resumeHooked = true;
+        const one = async () => {
+            await ensureStarted();
+            try { document.removeEventListener('pointerdown', one); } catch (_){ }
+            try { document.removeEventListener('keydown', one); } catch (_){ }
+        };
+        try { document.addEventListener('pointerdown', one, { once: true }); } catch (_){ }
+        try { document.addEventListener('keydown', one, { once: true }); } catch (_){ }
+    }
+    // init from storage
+    try {
+        const mv = parseInt(localStorage.getItem('sharkyMusicVolume') || '100', 10);
+        if (!isNaN(mv)) state.volume = Math.max(0, Math.min(1, mv / 100));
+        const mm = localStorage.getItem('sharkyMusicMuted');
+        if (mm === '1' || mm === '0') state.muted = (mm === '1');
+    } catch (_) {}
+    return { ensureStarted, setVolume, setMuted, isMuted, getVolume, hookAutoResume };
+})();
+window.BGM = BGM;
 
 /**
  * Global input state for keyboard and touch controls.
@@ -96,6 +178,8 @@ function showStartMenu() {
     ss.style.pointerEvents = 'auto';
     ss.style.zIndex = '10010';
     _menuOpen = true;
+    // Start background music and hook a user-gesture fallback
+    try { BGM.ensureStarted(); BGM.hookAutoResume(); } catch (e) {}
     try {
         const savedMode = localStorage.getItem('sharkyStartMode');
         if (savedMode) {
@@ -110,6 +194,28 @@ function showStartMenu() {
         const dark = localStorage.getItem('sharkyDarkMode') === '1';
         const d1 = document.getElementById('darkToggleInline'); if (d1) d1.checked = dark;
         const d2 = document.getElementById('darkToggle'); if (d2) d2.checked = dark;
+        // Sound controls (SFX)
+        const mt = document.getElementById('muteToggleInline');
+        const vr = document.getElementById('volumeRange');
+        const vl = document.getElementById('volLabel');
+        try {
+            const sv = parseInt(localStorage.getItem('sharkyVolume') || '100', 10);
+            const sm = localStorage.getItem('sharkyMuted') === '1';
+            if (mt) mt.checked = sm;
+            if (vr) vr.value = String(isNaN(sv) ? 100 : Math.max(0, Math.min(100, sv)));
+            if (vl) vl.textContent = ((isNaN(sv) ? 100 : Math.max(0, Math.min(100, sv)))) + '%';
+        } catch (e) {}
+        // Music controls (BGM)
+        const mmt = document.getElementById('musicMuteToggle');
+        const mvr = document.getElementById('musicVolumeRange');
+        const mvl = document.getElementById('musicVolLabel');
+        try {
+            const mv = parseInt(localStorage.getItem('sharkyMusicVolume') || '100', 10);
+            const mm = localStorage.getItem('sharkyMusicMuted') === '1';
+            if (mmt) mmt.checked = mm;
+            if (mvr) mvr.value = String(isNaN(mv) ? 100 : Math.max(0, Math.min(100, mv)));
+            if (mvl) mvl.textContent = ((isNaN(mv) ? 100 : Math.max(0, Math.min(100, mv)))) + '%';
+        } catch (e) {}
     } catch (e) {}
 }
 
@@ -162,9 +268,39 @@ function init() {
     if (startBtn) startBtn.addEventListener('click', startGame);
     const d1 = document.getElementById('darkToggleInline');
     const d2 = document.getElementById('darkToggle');
+    const muteInline = document.getElementById('muteToggleInline');
+    const volumeRange = document.getElementById('volumeRange');
+    const volLabel = document.getElementById('volLabel');
+    const musicMute = document.getElementById('musicMuteToggle');
+    const musicRange = document.getElementById('musicVolumeRange');
+    const musicVolLabel = document.getElementById('musicVolLabel');
     const touchToggle = document.getElementById('touchToggle');
     if (d1) d1.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
     if (d2) d2.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
+    // Sound controls wiring
+    const syncVolLabel = () => { if (volLabel && volumeRange) volLabel.textContent = `${volumeRange.value}%`; };
+    if (muteInline) muteInline.addEventListener('change', (e) => {
+        const m = !!e.target.checked; SFX.setMuted(m);
+    });
+    if (volumeRange) {
+        // initialize from storage
+        try { const sv = parseInt(localStorage.getItem('sharkyVolume') || '100', 10); if (!isNaN(sv)) volumeRange.value = String(Math.max(0, Math.min(100, sv))); } catch(_){}
+        syncVolLabel();
+        volumeRange.addEventListener('input', () => { syncVolLabel(); SFX.setVolume((parseInt(volumeRange.value,10)||0)/100); });
+        volumeRange.addEventListener('change', () => { syncVolLabel(); SFX.setVolume((parseInt(volumeRange.value,10)||0)/100); });
+    }
+    // Music controls wiring
+    const syncMusicLabel = () => { if (musicVolLabel && musicRange) musicVolLabel.textContent = `${musicRange.value}%`; };
+    if (musicMute) musicMute.addEventListener('change', (e) => { const m = !!e.target.checked; BGM.setMuted(m); BGM.ensureStarted(); });
+    if (musicRange) {
+        try { const mv = parseInt(localStorage.getItem('sharkyMusicVolume') || '100', 10); if (!isNaN(mv)) musicRange.value = String(Math.max(0, Math.min(100, mv))); } catch(_){ }
+        syncMusicLabel();
+        const apply = () => { syncMusicLabel(); BGM.setVolume((parseInt(musicRange.value,10)||0)/100); BGM.ensureStarted(); };
+        musicRange.addEventListener('input', apply);
+        musicRange.addEventListener('change', apply);
+    }
+    // Try to start music on any start button click as well (user gesture)
+    if (startBtn) startBtn.addEventListener('click', () => { try { BGM.ensureStarted(); } catch(e){} });
     const r = document.getElementById('restartBtn');
     if (r) r.addEventListener('click', () => { if (world) world.restartGame(); });
     // Manual Touch toggle: when user toggles, disable auto and reflect in overlay
@@ -225,10 +361,12 @@ function monitorEndState() {
         try {
         const now = Date.now();
         const suppressed = _suppressEndOverlayUntil && now < _suppressEndOverlayUntil;
+        const hsEl = document.getElementById('highscoresUI');
+        const hsOpen = !!(hsEl && hsEl.style.display !== 'none');
         if (_menuOpen) {
                 // ensure overlay stays closed while menu is open
                 if (_endUiVisible) hideGameOverUI();
-            } else if (world && world.gameOver && !suppressed) {
+            } else if (world && world.gameOver && !suppressed && !hsOpen) {
                 if (!_endUiVisible) showGameOverUI();
             } else {
                 if (_endUiVisible) hideGameOverUI();
@@ -278,20 +416,19 @@ function showGameOverUI() {
     deadImg.alt = 'Sharkie Game Over';
     deadImg.style.display = 'block'; deadImg.style.margin = '0 auto 8px';
     deadImg.style.width = '120px'; deadImg.style.height = 'auto';
-    const info = document.createElement('div'); info.style.margin = '0 0 12px'; info.innerText = `Score: ${score} • Zeit: ${secs}s • ${diff}`;
+    const info = document.createElement('div'); info.style.margin = '0 0 12px'; info.innerText = `Score: ${score} • Time: ${secs}s • ${diff}`;
     const nameWrap = document.createElement('div'); nameWrap.style.margin = '0 0 10px'; nameWrap.style.textAlign = 'left';
-    const nameLbl = document.createElement('label'); nameLbl.innerText = 'Name für Highscore:'; nameLbl.style.display = 'block'; nameLbl.style.marginBottom = '6px';
+    const nameLbl = document.createElement('label'); nameLbl.innerText = 'Name for High Score:'; nameLbl.style.display = 'block'; nameLbl.style.marginBottom = '6px';
     const nameInput = document.createElement('input'); nameInput.id = 'playerName'; nameInput.type = 'text'; nameInput.maxLength = 24; nameInput.style.width = '100%'; nameInput.style.padding = '8px'; nameInput.style.borderRadius = '6px'; nameInput.style.border = '1px solid rgba(255,255,255,0.1)'; nameInput.style.background = 'transparent'; nameInput.style.color = 'white';
     try { const prev = localStorage.getItem('sharkyPlayerName'); if (prev) nameInput.value = prev; } catch (e) {}
     nameWrap.appendChild(nameLbl); nameWrap.appendChild(nameInput);
     const btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '10px'; btnRow.style.justifyContent = 'center'; btnRow.style.flexWrap = 'wrap';
-    const hsBtn = document.createElement('button'); hsBtn.innerText = 'Highscores'; hsBtn.style.padding = '8px 12px';
-    const menuBtn = document.createElement('button'); menuBtn.innerText = 'Zum Menü'; menuBtn.style.padding = '8px 12px';
-    btnRow.appendChild(hsBtn); btnRow.appendChild(menuBtn);
+    const confirmBtn = document.createElement('button'); confirmBtn.innerText = 'Confirm'; confirmBtn.style.padding = '8px 12px';
+    btnRow.appendChild(confirmBtn);
     inner.appendChild(title); inner.appendChild(deadImg); inner.appendChild(info); inner.appendChild(nameWrap); inner.appendChild(btnRow);
     ov.appendChild(inner);
 
-    hsBtn.addEventListener('click', () => {
+    confirmBtn.addEventListener('click', () => {
         try {
             const name = (nameInput.value || 'Player').trim();
             try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
@@ -299,19 +436,12 @@ function showGameOverUI() {
             const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
             const d = world ? (world.difficulty || 'normal') : 'normal';
             if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: s, difficulty: d, timeMs: t, when: Date.now() });
+            // Switch to High Scores view immediately
+            hideGameOverUI();
             showHighscoresUI();
         } catch (e) {}
     });
-                menuBtn.addEventListener('click', () => {
-                    // mark menu open immediately and clear end-state so monitor won't re-open overlay
-                    _menuOpen = true;
-                    try { if (world) { world.gameOver = false; world.victory = false; world.running = false; } } catch (e) {}
-                    // suppress overlay reopen briefly
-                    try { _suppressEndOverlayUntil = Date.now() + 600; } catch (e) {}
-                    try { hideHighscoresUI(); } catch (e) {}
-                    try { hideGameOverUI(); } catch (e) {}
-                    try { showStartMenu(); } catch (e) {}
-                });
+                // No direct menu from Game Over; path continues via High Scores
 
     ov.style.display = 'flex';
     _endUiVisible = true;
@@ -328,12 +458,29 @@ function showHighscoresUI() {
     ov.innerHTML = '';
     const inner = document.createElement('div');
     inner.style.background = '#07232b'; inner.style.padding = '16px'; inner.style.borderRadius = '10px'; inner.style.width = 'min(420px,92vw)'; inner.style.boxSizing = 'border-box';
-    const title = document.createElement('h3'); title.innerText = 'Highscores'; title.style.margin = '0 0 10px';
+    const title = document.createElement('h3'); title.innerText = 'High Scores'; title.style.margin = '0 0 10px';
     const list = document.createElement('div'); list.id = 'hsList'; list.style.maxHeight = '60vh'; list.style.overflowY = 'auto'; list.style.marginBottom = '12px';
-    const close = document.createElement('button'); close.innerText = 'Schließen'; close.style.padding = '8px 12px';
-    close.addEventListener('click', () => { hideHighscoresUI(); });
-    inner.appendChild(title); inner.appendChild(list); inner.appendChild(close);
+    const actions = document.createElement('div'); actions.style.display = 'flex'; actions.style.gap = '10px'; actions.style.justifyContent = 'center';
+    const restart = document.createElement('button'); restart.innerText = 'Restart'; restart.style.padding = '8px 12px';
+    const toMenu = document.createElement('button'); toMenu.innerText = 'Back to Menu'; toMenu.style.padding = '8px 12px';
+    actions.appendChild(restart); actions.appendChild(toMenu);
+    inner.appendChild(title); inner.appendChild(list); inner.appendChild(actions);
     ov.appendChild(inner);
+    restart.addEventListener('click', () => {
+        try { hideHighscoresUI(); } catch (e) {}
+        try { hideGameOverUI(); } catch (e) {}
+        try { _suppressEndOverlayUntil = Date.now() + 600; } catch (e) {}
+        try { if (world) { world.gameOver = false; world.victory = false; world.restartGame(); } } catch (e) {}
+    });
+    toMenu.addEventListener('click', () => {
+        // mark menu open immediately and clear end-state so monitor won't re-open overlay
+        _menuOpen = true;
+        try { if (world) { world.gameOver = false; world.victory = false; world.running = false; } } catch (e) {}
+        try { _suppressEndOverlayUntil = Date.now() + 600; } catch (e) {}
+        try { hideHighscoresUI(); } catch (e) {}
+        try { hideGameOverUI(); } catch (e) {}
+        try { showStartMenu(); } catch (e) {}
+    });
     try {
         let arr = (typeof getTopHighscores === 'function') ? (getTopHighscores(10, false) || []) : [];
         list.innerHTML = '';
@@ -365,8 +512,8 @@ function hideHighscoresUI() {
         ov.style.display = 'none'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
         ov.style.background = 'rgba(0,0,0,0.5)'; ov.style.zIndex = '10010'; ov.style.color = 'white';
         const inner = document.createElement('div'); inner.style.background = '#0b2233'; inner.style.padding = '16px'; inner.style.borderRadius = '10px'; inner.style.textAlign = 'center';
-        const t = document.createElement('div'); t.innerText = 'Pausiert'; t.style.fontSize = '20px'; t.style.marginBottom = '10px';
-        const btn = document.createElement('button'); btn.innerText = 'Weiter'; btn.style.padding = '8px 12px';
+    const t = document.createElement('div'); t.innerText = 'Paused'; t.style.fontSize = '20px'; t.style.marginBottom = '10px';
+    const btn = document.createElement('button'); btn.innerText = 'Resume'; btn.style.padding = '8px 12px';
         btn.addEventListener('click', () => { try { if (world) world.paused = false; } catch(e){} hidePauseOverlay(); });
         inner.appendChild(t); inner.appendChild(btn); ov.appendChild(inner);
         document.body.appendChild(ov);
@@ -433,7 +580,7 @@ function hideHighscoresUI() {
         ov.style.display = 'none'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
         ov.style.background = 'rgba(0,0,0,0.8)'; ov.style.zIndex = '10020'; ov.style.color = 'white'; ov.style.pointerEvents = 'auto';
         const inner = document.createElement('div'); inner.style.textAlign = 'center'; inner.style.maxWidth = '80vw';
-        const t = document.createElement('div'); t.innerText = 'Bitte das Handy drehen (Querformat).'; t.style.fontSize = '20px'; t.style.marginBottom = '10px';
+    const t = document.createElement('div'); t.innerText = 'Please rotate your device (landscape).'; t.style.fontSize = '20px'; t.style.marginBottom = '10px';
         inner.appendChild(t); ov.appendChild(inner); document.body.appendChild(ov);
     }
     function showRotateOverlay() { ensureRotateOverlay(); const ov = document.getElementById('rotateOverlay'); if (ov) ov.style.display = 'flex'; }

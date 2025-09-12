@@ -425,10 +425,10 @@ class World {
       ctx.fillStyle = 'white';
       ctx.font = '20px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Du wurdest gefressen - Drücke R zum Neustart', cx, cy + h/2 + 40);
+  ctx.fillText('You were eaten', cx, cy + h/2 + 40);
       // show final numeric score beneath the message
       ctx.font = '18px monospace';
-      ctx.fillText('Erreichte Punktzahl: ' + (this.score || 0), cx, cy + h/2 + 70);
+  ctx.fillText('Final Score: ' + (this.score || 0), cx, cy + h/2 + 70);
       ctx.restore();
     }
 
@@ -491,11 +491,11 @@ class World {
       ctx2.fillStyle = 'white';
       ctx2.font = '14px sans-serif';
       ctx2.textAlign = 'left';
-      ctx2.fillText('Gegessen: ' + (this.enemiesEaten || 0), hudX, hudY + 14);
-      ctx2.fillText('Score: ' + (this.score || 0), hudX, hudY + 34);
-  ctx2.fillText('Zeit: ' + timeStr, hudX + 200, hudY + 24);
+    ctx2.fillText('Eaten: ' + (this.enemiesEaten || 0), hudX, hudY + 14);
+    ctx2.fillText('Score: ' + (this.score || 0), hudX, hudY + 34);
+  ctx2.fillText('Time: ' + timeStr, hudX + 200, hudY + 24);
   // show current mode/difficulty
-  try { ctx2.fillText('Modus: ' + (this.difficulty || 'normal'), hudX + 200, hudY + 44); } catch (e) {}
+  try { ctx2.fillText('Mode: ' + (this.difficulty || 'normal'), hudX + 200, hudY + 44); } catch (e) {}
 
       // progress-to-boss bar: map score 2000 -> 0, 120000 -> 1
       try {
@@ -676,7 +676,7 @@ class World {
         if (!ctx) return;
         const pad = 10;
         const btnH = 30;
-        const pauseW = 70; // "Pause" or "Weiter"
+  const pauseW = 70; // "Pause" or "Resume"
         const gap = 10;
         const sliderW = 90; // Touch: On/Off
         const x2 = this.canvas.width - pad;
@@ -723,7 +723,7 @@ class World {
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(this.paused ? 'Weiter' : 'Pause', px + pauseW / 2, py + btnH / 2);
+  ctx.fillText(this.paused ? 'Resume' : 'Pause', px + pauseW / 2, py + btnH / 2);
         ctx.restore();
       }
   _handleCanvasPointer(ev) {
