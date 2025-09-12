@@ -346,6 +346,9 @@ function init() {
         try {
             SFX.load('blub', './audio/blub.mp3');
             SFX.load('essen', './audio/essen.mp3');
+            SFX.load('naw', './audio/naw.mp3');
+            SFX.load('wow', './audio/wow.mp3');
+            SFX.load('nicescore', './audio/nicescore.mp3');
         } catch (e) {}
 }
 
@@ -436,6 +439,7 @@ function showGameOverUI() {
             const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
             const d = world ? (world.difficulty || 'normal') : 'normal';
             if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: s, difficulty: d, timeMs: t, when: Date.now() });
+            try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
             // Switch to High Scores view immediately
             hideGameOverUI();
             showHighscoresUI();

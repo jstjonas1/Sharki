@@ -535,6 +535,7 @@ class World {
   this.gameOver = true;
   // record final elapsed time for external UI
   try { this._finalElapsedMs = this.elapsedMs || 0; } catch (e) { this._finalElapsedMs = 0; }
+  try { if (window.SFX) window.SFX.play('naw', 1); } catch (_) {}
   console.log('GAME OVER');
   }
 
@@ -543,6 +544,7 @@ class World {
   // record final elapsed time for external UI (so saves show correct time)
   try { this._finalElapsedMs = this.elapsedMs || 0; } catch (e) { this._finalElapsedMs = 0; }
   this._victoryStart = Date.now();
+  try { if (window.SFX) window.SFX.play('wow', 1); } catch (_) {}
   console.log('VICTORY!');
   }
 
