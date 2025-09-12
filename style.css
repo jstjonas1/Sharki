@@ -59,4 +59,33 @@ button:disabled, input[disabled] {
     z-index:9999; 
     padding:12px; 
     box-sizing:border-box;
+    
+}
+
+/* Mobile landscape: when height is very small, arrange Start Menu side-by-side */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+    /* Allow more horizontal space and avoid inner clipping */
+    #startInner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 10px;
+        width: min(900px, 98vw);
+        max-height: none;       /* prevent inner scroll; let layout go wider */
+        overflow: visible;
+    }
+    #startInner h2 { flex: 0 0 100%; margin-bottom: 6px; }
+    /* Arrange the first four sections (World, Mode, Sound, Music) into columns */
+    #startInner > div:nth-of-type(-n+4) {
+        flex: 1 1 300px;        /* two columns when space allows */
+        min-width: 260px;
+        max-width: 420px;
+    }
+    /* Start button row spans full width */
+    #startInner > div:nth-of-type(5) { flex: 0 0 100%; }
+    /* Controls hint paragraph spans full width */
+    #startInner > p:last-child { flex: 0 0 100%; }
+    /* Ensure overlay itself can scroll horizontally/vertically if still needed */
+    #startScreen { overflow: auto; }
 }

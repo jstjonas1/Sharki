@@ -357,6 +357,7 @@ window.init = init;
 
 /** Minimal Game Over + Highscores UI monitor and builders. */
 let _endUiVisible = false;
+let _victoryUiVisible = false;
 let _suppressEndOverlayUntil = 0;
 
 function monitorEndState() {
@@ -369,10 +370,16 @@ function monitorEndState() {
         if (_menuOpen) {
                 // ensure overlay stays closed while menu is open
                 if (_endUiVisible) hideGameOverUI();
+                if (_victoryUiVisible) hideVictoryUI();
             } else if (world && world.gameOver && !suppressed && !hsOpen) {
                 if (!_endUiVisible) showGameOverUI();
+                if (_victoryUiVisible) hideVictoryUI();
+            } else if (world && world.victory && !suppressed && !hsOpen) {
+                if (!_victoryUiVisible) showVictoryUI();
+                if (_endUiVisible) hideGameOverUI();
             } else {
                 if (_endUiVisible) hideGameOverUI();
+                if (_victoryUiVisible) hideVictoryUI();
             }
         } catch (e) {}
         requestAnimationFrame(tick);
@@ -457,6 +464,61 @@ function hideGameOverUI() {
     _endUiVisible = false;
 }
 
+function showVictoryUI() {
+    const ov = buildOverlay('victoryUI');
+    ov.innerHTML = '';
+    const inner = document.createElement('div');
+    inner.style.background = '#0b2233';
+    inner.style.padding = '16px';
+    inner.style.borderRadius = '10px';
+    inner.style.width = 'min(380px,92vw)';
+    inner.style.boxSizing = 'border-box';
+    inner.style.textAlign = 'center';
+    const score = world ? (world.score || 0) : 0;
+    const secs = world ? Math.round((world._finalElapsedMs || world.elapsedMs || 0) / 1000) : 0;
+    const diff = world ? (world.difficulty || 'normal') : 'normal';
+    const title = document.createElement('h2'); title.innerText = 'You Win!'; title.style.margin = '0 0 8px';
+    const idleImg = document.createElement('img');
+    idleImg.src = './assets/img/sharki/1sharkie/1idle/1.png';
+    idleImg.alt = 'Sharkie Victory';
+    idleImg.style.display = 'block'; idleImg.style.margin = '0 auto 8px';
+    idleImg.style.width = '120px'; idleImg.style.height = 'auto';
+    const info = document.createElement('div'); info.style.margin = '0 0 12px'; info.innerText = `Score: ${score} • Time: ${secs}s • ${diff}`;
+    const nameWrap = document.createElement('div'); nameWrap.style.margin = '0 0 10px'; nameWrap.style.textAlign = 'left';
+    const nameLbl = document.createElement('label'); nameLbl.innerText = 'Name for High Score:'; nameLbl.style.display = 'block'; nameLbl.style.marginBottom = '6px';
+    const nameInput = document.createElement('input'); nameInput.id = 'playerNameVictory'; nameInput.type = 'text'; nameInput.maxLength = 24; nameInput.style.width = '100%'; nameInput.style.padding = '8px'; nameInput.style.borderRadius = '6px'; nameInput.style.border = '1px solid rgba(255,255,255,0.1)'; nameInput.style.background = 'transparent'; nameInput.style.color = 'white';
+    try { const prev = localStorage.getItem('sharkyPlayerName'); if (prev) nameInput.value = prev; } catch (e) {}
+    nameWrap.appendChild(nameLbl); nameWrap.appendChild(nameInput);
+    const btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '10px'; btnRow.style.justifyContent = 'center'; btnRow.style.flexWrap = 'wrap';
+    const confirmBtn = document.createElement('button'); confirmBtn.innerText = 'Confirm'; confirmBtn.style.padding = '8px 12px';
+    btnRow.appendChild(confirmBtn);
+    inner.appendChild(title); inner.appendChild(idleImg); inner.appendChild(info); inner.appendChild(nameWrap); inner.appendChild(btnRow);
+    ov.appendChild(inner);
+
+    confirmBtn.addEventListener('click', () => {
+        try {
+            const name = (nameInput.value || 'Player').trim();
+            try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
+            const s = world ? (world.score || 0) : 0;
+            const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
+            const d = world ? (world.difficulty || 'normal') : 'normal';
+            if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: s, difficulty: d, timeMs: t, when: Date.now() });
+            try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
+            hideVictoryUI();
+            showHighscoresUI();
+        } catch (e) {}
+    });
+
+    ov.style.display = 'flex';
+    _victoryUiVisible = true;
+}
+
+function hideVictoryUI() {
+    const ov = document.getElementById('victoryUI');
+    if (ov) ov.style.display = 'none';
+    _victoryUiVisible = false;
+}
+
 function showHighscoresUI() {
     const ov = buildOverlay('highscoresUI');
     ov.innerHTML = '';
@@ -473,6 +535,7 @@ function showHighscoresUI() {
     restart.addEventListener('click', () => {
         try { hideHighscoresUI(); } catch (e) {}
         try { hideGameOverUI(); } catch (e) {}
+        try { hideVictoryUI(); } catch (e) {}
         try { _suppressEndOverlayUntil = Date.now() + 600; } catch (e) {}
         try { if (world) { world.gameOver = false; world.victory = false; world.restartGame(); } } catch (e) {}
     });
@@ -483,6 +546,7 @@ function showHighscoresUI() {
         try { _suppressEndOverlayUntil = Date.now() + 600; } catch (e) {}
         try { hideHighscoresUI(); } catch (e) {}
         try { hideGameOverUI(); } catch (e) {}
+        try { hideVictoryUI(); } catch (e) {}
         try { showStartMenu(); } catch (e) {}
     });
     try {
@@ -494,7 +558,14 @@ function showHighscoresUI() {
             arr.forEach((r, i) => {
                 const row = document.createElement('div'); row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.padding = '6px 4px'; row.style.borderBottom = '1px solid rgba(255,255,255,0.06)';
                 const left = document.createElement('div'); left.innerText = `${i+1}. ${r.name || 'Player'}`; left.style.fontWeight = '600';
-                const right = document.createElement('div'); right.style.fontFamily = 'monospace'; right.innerText = `${r.score || 0}`;
+                const right = document.createElement('div'); right.style.fontFamily = 'monospace';
+                try {
+                    const secs = Math.max(0, Math.round((r.timeMs || 0) / 1000));
+                    const mm = Math.floor(secs / 60); const ss = String(secs % 60).padStart(2, '0');
+                    right.innerText = `${r.score || 0} • ${mm}:${ss}`;
+                } catch (_) {
+                    right.innerText = `${r.score || 0}`;
+                }
                 row.appendChild(left); row.appendChild(right); list.appendChild(row);
             });
         }

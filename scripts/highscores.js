@@ -33,7 +33,12 @@
                     const easyRaw = localStorage.getItem('sharkyHighscores_easy');
                     const easyList = easyRaw ? (JSON.parse(easyRaw) || []) : [];
                     easyList.push(rec);
-                    easyList.sort((a,b) => { if ((b.finalScore||0) !== (a.finalScore||0)) return (b.finalScore||0) - (a.finalScore||0); return (a.timeMs || 0) - (b.timeMs || 0); });
+                    // Sort by raw score desc; if equal, faster time ranks higher (1s faster beats like +10 points)
+                    easyList.sort((a,b) => {
+                        const as = (a.score || a.finalScore || 0); const bs = (b.score || b.finalScore || 0);
+                        if (bs !== as) return bs - as;
+                        return (a.timeMs || 0) - (b.timeMs || 0);
+                    });
                     const cappedEasy = easyList.slice(0,50);
                     try { localStorage.setItem('sharkyHighscores_easy', JSON.stringify(cappedEasy)); } catch (e) {}
                     return cappedEasy;
@@ -42,8 +47,12 @@
 
             const list = loadHighscores();
             list.push(rec);
-            // sort: finalScore desc, time asc
-            list.sort((a,b) => { if ((b.finalScore||0) !== (a.finalScore||0)) return (b.finalScore||0) - (a.finalScore||0); return (a.timeMs || 0) - (b.timeMs || 0); });
+            // Sort by raw score desc; if equal, faster time ranks higher (1s faster beats like +10 points)
+            list.sort((a,b) => {
+                const as = (a.score || a.finalScore || 0); const bs = (b.score || b.finalScore || 0);
+                if (bs !== as) return bs - as;
+                return (a.timeMs || 0) - (b.timeMs || 0);
+            });
             // cap to 50 entries
             const capped = list.slice(0,50);
             saveHighscores(capped);
@@ -86,10 +95,20 @@
                     const easyList = easyRaw ? (JSON.parse(easyRaw) || []) : [];
                     // merge and sort overall
                     const merged = (easyList || []).concat(filtered || []);
-                    merged.sort((a,b) => { if ((b.finalScore||0) !== (a.finalScore||0)) return (b.finalScore||0) - (a.finalScore||0); return (a.timeMs || 0) - (b.timeMs || 0); });
+                    merged.sort((a,b) => {
+                        const as = (a.score || a.finalScore || 0); const bs = (b.score || b.finalScore || 0);
+                        if (bs !== as) return bs - as;
+                        return (a.timeMs || 0) - (b.timeMs || 0);
+                    });
                     return merged.slice(0, n || 10);
                 } catch (e) { /* fallback to filtered */ }
             }
+            // Ensure filtered is sorted consistently even without easy entries merged
+            filtered.sort((a,b) => {
+                const as = (a.score || a.finalScore || 0); const bs = (b.score || b.finalScore || 0);
+                if (bs !== as) return bs - as;
+                return (a.timeMs || 0) - (b.timeMs || 0);
+            });
             return filtered.slice(0, n || 10);
         } catch (e) { return []; }
     }
