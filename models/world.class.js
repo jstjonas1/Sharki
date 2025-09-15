@@ -154,8 +154,13 @@ class World {
   this.elapsedMs = 0;
   // apply difficulty adjustments before the world starts spawning
   try { this.applyDifficultySettings(); } catch (e) {}
-  // set starting score depending on difficulty (infinity starts higher)
-  try { this.score = (this.difficulty === 'infinity') ? 10000 : 2000; } catch (e) { this.score = 2000; }
+    // set starting score depending on difficulty (infinity starts higher, easy boosted)
+    try {
+      const d = (this.difficulty || 'normal').toString().toLowerCase();
+      if (d === 'infinity') this.score = 10000;
+        else if (d === 'easy') this.score = 30000; // much easier start
+      else this.score = 2000;
+    } catch (e) { this.score = 2000; }
     requestAnimationFrame(() => this.gameLoop());
   }
 
@@ -242,7 +247,11 @@ class World {
           this.triggerGameOver();
         } else {
           // compare raw points
-          if (this.score >= (e.score || 0)) {
+              // compare with easier threshold in Easy mode (player treated as 25% stronger)
+              const enemyScore = (e.score || 0);
+              let playerEffective = this.score;
+              try { if ((this.difficulty || 'normal').toString().toLowerCase() === 'easy') playerEffective = Math.round(this.score * 1.25); } catch(_){}
+              if (playerEffective >= enemyScore) {
             // eat: increase score by enemy.score and remove it
             e._dead = true;
             // track eaten enemies
@@ -250,11 +259,12 @@ class World {
             // play eat sound
             try { if (window.SFX) window.SFX.play('essen', 0.9); } catch (err) {}
             // calculate gained points depending on difficulty
-            let baseFraction = 0.2;
+            // Normal baseline: 20% of enemy score. Easy should be 5x of normal => 100% of enemy score.
+            let baseFraction = 0.2; // Normal
             try {
               const d = (this.difficulty || 'normal').toString().toLowerCase();
               if (d === 'infinity') baseFraction = 0.025; // 2.5% in infinity mode
-              else if (d === 'easy') baseFraction = 0.8; // Easy: 80% of enemy score
+              else if (d === 'easy') baseFraction = 1.0; // Easy: 5x normal => full enemy score
             } catch (e2) {}
             let gainedBase = Math.round((e.score || 0) * baseFraction);
             // apply world caps (Infinity mode increases world cap)
@@ -551,7 +561,12 @@ class World {
   // restart the game: reset score, eaten count, enemies, bubbles and flags
   restartGame() {
     // reset basic state
-  this.score = 2000;
+  try {
+    const d = (this.difficulty || 'normal').toString().toLowerCase();
+    if (d === 'infinity') this.score = 10000;
+    else if (d === 'easy') this.score = 30000; // keep easy baseline on restart
+    else this.score = 2000;
+  } catch (_) { this.score = 2000; }
   // reset timer
   this.elapsedMs = 0;
   this._finalElapsedMs = 0;
@@ -773,14 +788,19 @@ class World {
       this.bossTriggerScore = 120000;
       // per difficulty tweaks
       if (d === 'easy') {
-        // fewer spawns, milder enemies
-  this.spawnMultiplier = 0.9;
-  this.spawnRateMaxPerSec = 6; // slightly higher rate so edible fish appear faster
-  this.maxEnemies = 18;
-  // in easy mode the character grows faster: shorten initial ramp duration and increase ramp target
-  try { this._initialRampDuration = Math.max(3000, (this._initialRampDuration || 10000) * 0.4); this._initialRampTarget = Math.max(this._initialRampTarget || 15, Math.round((this._initialRampTarget || 15) * 1.25)); } catch (e) {}
-  // make boss trigger lower so player reaches boss faster in easy mode
-  this.bossTriggerScore = Math.max(30000, Math.round(this.bossTriggerScore * 0.4));
+        // Much easier: more edible fish, fewer/slower spawns, fewer enemies, lower cap
+        try { this.minEdibleFraction = 0.6; } catch (e) {}
+        this.spawnMultiplier = 0.8;        // fewer total spawns
+        this.spawnRateMaxPerSec = 4;       // slower inflow
+        this.maxEnemies = 16;              // fewer concurrent enemies
+        this.enemyScoreCap = 90000;        // enemies cap lower so more are edible sooner
+        // Faster early growth ramp
+        try {
+          this._initialRampDuration = Math.max(3000, Math.round((this._initialRampDuration || 10000) * 0.5));
+          this._initialRampTarget = Math.max(18, Math.round((this._initialRampTarget || 15) * 1.2));
+        } catch (e) {}
+        // Keep boss trigger at the global threshold
+        this.bossTriggerScore = 120000;
       } else if (d === 'hard') {
   // increase concurrent enemies and spawn rate for a denser experience
   // significantly raise spawn multiplier and per-second cap
@@ -825,7 +845,10 @@ class World {
     }
     // fallback: return a clamped random value (may collide)
     const v = min + Math.random() * (max - min);
-    return Math.max(min, Math.min(max, Math.round(v * 100) / 100));
+      let out = Math.max(min, Math.min(max, Math.round(v * 100) / 100));
+      // In Easy mode, globally slow enemies a bit
+      try { if ((this.difficulty || 'normal').toString().toLowerCase() === 'easy') out = Math.max(min, Math.min(max, Math.round(out * 0.85 * 100) / 100)); } catch(_){}
+      return out;
   }
 
   startBossFight() {

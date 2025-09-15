@@ -33,10 +33,13 @@
                     const easyRaw = localStorage.getItem('sharkyHighscores_easy');
                     const easyList = easyRaw ? (JSON.parse(easyRaw) || []) : [];
                     easyList.push(rec);
-                    // Sort by raw score desc; if equal, faster time ranks higher (1s faster beats like +10 points)
+                    // Rank by effective score: score - 10 * seconds (1s faster ~ +10 points)
                     easyList.sort((a,b) => {
                         const as = (a.score || a.finalScore || 0); const bs = (b.score || b.finalScore || 0);
-                        if (bs !== as) return bs - as;
+                        const at = Math.max(0, Math.round((a.timeMs || 0) / 1000));
+                        const bt = Math.max(0, Math.round((b.timeMs || 0) / 1000));
+                        const ae = as - at * 10; const be = bs - bt * 10;
+                        if (be !== ae) return be - ae;
                         return (a.timeMs || 0) - (b.timeMs || 0);
                     });
                     const cappedEasy = easyList.slice(0,50);
@@ -47,10 +50,13 @@
 
             const list = loadHighscores();
             list.push(rec);
-            // Sort by raw score desc; if equal, faster time ranks higher (1s faster beats like +10 points)
+            // Rank by effective score: score - 10 * seconds (1s faster ~ +10 points)
             list.sort((a,b) => {
                 const as = (a.score || a.finalScore || 0); const bs = (b.score || b.finalScore || 0);
-                if (bs !== as) return bs - as;
+                const at = Math.max(0, Math.round((a.timeMs || 0) / 1000));
+                const bt = Math.max(0, Math.round((b.timeMs || 0) / 1000));
+                const ae = as - at * 10; const be = bs - bt * 10;
+                if (be !== ae) return be - ae;
                 return (a.timeMs || 0) - (b.timeMs || 0);
             });
             // cap to 50 entries
@@ -97,7 +103,10 @@
                     const merged = (easyList || []).concat(filtered || []);
                     merged.sort((a,b) => {
                         const as = (a.score || a.finalScore || 0); const bs = (b.score || b.finalScore || 0);
-                        if (bs !== as) return bs - as;
+                        const at = Math.max(0, Math.round((a.timeMs || 0) / 1000));
+                        const bt = Math.max(0, Math.round((b.timeMs || 0) / 1000));
+                        const ae = as - at * 10; const be = bs - bt * 10;
+                        if (be !== ae) return be - ae;
                         return (a.timeMs || 0) - (b.timeMs || 0);
                     });
                     return merged.slice(0, n || 10);
@@ -106,7 +115,10 @@
             // Ensure filtered is sorted consistently even without easy entries merged
             filtered.sort((a,b) => {
                 const as = (a.score || a.finalScore || 0); const bs = (b.score || b.finalScore || 0);
-                if (bs !== as) return bs - as;
+                const at = Math.max(0, Math.round((a.timeMs || 0) / 1000));
+                const bt = Math.max(0, Math.round((b.timeMs || 0) / 1000));
+                const ae = as - at * 10; const be = bs - bt * 10;
+                if (be !== ae) return be - ae;
                 return (a.timeMs || 0) - (b.timeMs || 0);
             });
             return filtered.slice(0, n || 10);

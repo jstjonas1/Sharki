@@ -275,8 +275,10 @@ function init() {
     const musicRange = document.getElementById('musicVolumeRange');
     const musicVolLabel = document.getElementById('musicVolLabel');
     const touchToggle = document.getElementById('touchToggle');
+    const howTo = document.getElementById('howToBtn');
     if (d1) d1.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
     if (d2) d2.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
+    if (howTo) howTo.addEventListener('click', () => { try { showHowToOverlay(); } catch (e) {} });
     // Sound controls wiring
     const syncVolLabel = () => { if (volLabel && volumeRange) volLabel.textContent = `${volumeRange.value}%`; };
     if (muteInline) muteInline.addEventListener('change', (e) => {
@@ -407,6 +409,33 @@ function buildOverlay(id) {
     return el;
 }
 
+function showHowToOverlay() {
+    const ov = buildOverlay('howToUI');
+    ov.innerHTML = '';
+    const inner = document.createElement('div');
+    inner.style.background = '#0b2233';
+    inner.style.padding = '16px';
+    inner.style.borderRadius = '10px';
+    inner.style.width = 'min(560px,92vw)';
+    inner.style.boxSizing = 'border-box';
+    inner.style.color = 'white';
+    inner.style.lineHeight = '1.45';
+    const title = document.createElement('h2'); title.textContent = 'How to play'; title.style.marginTop = '0';
+    const ul = document.createElement('ul'); ul.style.paddingLeft = '18px';
+    const li1 = document.createElement('li'); li1.textContent = 'Move with Arrow keys or WASD.';
+    const li2 = document.createElement('li'); li2.textContent = 'Shoot a bubble with F (or the on-screen button). Each shot costs 0.5% of your current points.';
+    const li3 = document.createElement('li'); li3.textContent = 'You can only eat fish that are smaller or the same size as you. Touching a bigger fish means Game Over.';
+    const li4 = document.createElement('li'); li4.textContent = 'When the progress bar reaches 100%, the Boss appears. Defeat it by shooting bubbles and don’t get hit.';
+    ul.appendChild(li1); ul.appendChild(li2); ul.appendChild(li3); ul.appendChild(li4);
+    const close = document.createElement('div');
+    const btn = document.createElement('button'); btn.textContent = 'Close'; btn.style.padding = '8px 12px'; btn.style.marginTop = '10px';
+    btn.addEventListener('click', () => { ov.style.display = 'none'; });
+    close.appendChild(btn);
+    inner.appendChild(title); inner.appendChild(ul); inner.appendChild(close);
+    ov.appendChild(inner);
+    ov.style.display = 'flex';
+}
+
 function showGameOverUI() {
     const ov = buildOverlay('gameOverUI');
     ov.innerHTML = '';
@@ -445,7 +474,9 @@ function showGameOverUI() {
             const s = world ? (world.score || 0) : 0;
             const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
             const d = world ? (world.difficulty || 'normal') : 'normal';
-            if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: s, difficulty: d, timeMs: t, when: Date.now() });
+            // In Easy mode, store half the score to keep leaderboard fair
+            const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
+            if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
             try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
             // Switch to High Scores view immediately
             hideGameOverUI();
@@ -502,7 +533,9 @@ function showVictoryUI() {
             const s = world ? (world.score || 0) : 0;
             const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
             const d = world ? (world.difficulty || 'normal') : 'normal';
-            if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: s, difficulty: d, timeMs: t, when: Date.now() });
+            // In Easy mode, store half the score to keep leaderboard fair
+            const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
+            if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
             try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
             hideVictoryUI();
             showHighscoresUI();
@@ -552,10 +585,23 @@ function showHighscoresUI() {
     try {
         let arr = (typeof getTopHighscores === 'function') ? (getTopHighscores(10, false) || []) : [];
         list.innerHTML = '';
-        if (!arr.length) {
+        // Defensive sort here to ensure ranking rule applies even if storage didn’t pre-sort
+        const data = Array.isArray(arr) ? arr.slice() : [];
+        data.sort((a,b) => {
+            const as = (a && (a.score ?? a.finalScore)) || 0; const bs = (b && (b.score ?? b.finalScore)) || 0;
+            const at = Math.max(0, Math.round(((a && a.timeMs) || 0) / 1000));
+            const bt = Math.max(0, Math.round(((b && b.timeMs) || 0) / 1000));
+            // effective score = score - 10 points per second (faster => higher effective)
+            const ae = as - at * 10;
+            const be = bs - bt * 10;
+            if (be !== ae) return be - ae;
+            // absolute tie: prefer truly faster time
+            return (a.timeMs || 0) - (b.timeMs || 0);
+        });
+        if (!data.length) {
             const dash = document.createElement('div'); dash.style.textAlign = 'center'; dash.style.opacity = '0.8'; dash.innerText = '-'; list.appendChild(dash);
         } else {
-            arr.forEach((r, i) => {
+            data.forEach((r, i) => {
                 const row = document.createElement('div'); row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.padding = '6px 4px'; row.style.borderBottom = '1px solid rgba(255,255,255,0.06)';
                 const left = document.createElement('div'); left.innerText = `${i+1}. ${r.name || 'Player'}`; left.style.fontWeight = '600';
                 const right = document.createElement('div'); right.style.fontFamily = 'monospace';
