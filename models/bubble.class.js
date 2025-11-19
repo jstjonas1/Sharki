@@ -10,7 +10,7 @@ class Bubble extends MovableObject {
         this.width = 16;
         this.height = 16;
         this.img = new Image();
-        // try a likely bubble image; fallback silently if missing
+      
         this.img.src = './assets/img/sharki/1sharkie/4attack/bubble_trap/bubble.png';
     }
 

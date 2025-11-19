@@ -1,26 +1,36 @@
+/**
+ * Boss enemy class that chases the player and requires multiple bubble hits to defeat.
+ * @extends Enemy
+ */
 class Boss extends Enemy {
+    /**
+     * Initialize the boss with floating animation and health properties.
+     */
     constructor() {
         super();
-        // try to load a short floating animation sequence; fallback to single frame
-    this.loadFramesPattern('./assets/img/sharki/2enemy/3final_enemy/2floating/', ['{i}.png'], 8, 180).catch(() => {
+        this.loadFramesPattern('./assets/img/sharki/2enemy/3final_enemy/2floating/', ['{i}.png'], 8, 180).catch(() => {
             this.loadImage('./assets/img/sharki/2enemy/3final_enemy/2floating/1.png').catch(() => {});
         });
         this.z = 1;
-    // boss uses hitCount from bubbles (requires 10 bubble hits to destroy)
-    this.maxHealth = 10; // number of bubble hits required
-    this.health = this.maxHealth;
-    this.hitCount = 0; // explicit bubble hit counter
-        this.vx = -0.6; // will be adjusted when entering
+        this.maxHealth = 10;
+        this.health = this.maxHealth;
+        this.hitCount = 0;
+        this.vx = -0.6;
+        if (this.width < 100) this.width = 100;
+        if (this.height < 100) this.height = 100;
     }
 
-    // Boss moves freely; use update to apply velocity
+    /**
+     * Update boss position to chase the player character.
+     * @param {number} dt - Delta time in milliseconds since last update
+     */
     update(dt) {
-        // chase the player: compute direction towards character and move with a fixed px/sec speed
+      
         try {
             const world = (typeof window !== 'undefined') ? window.world : null;
             const cx = world && world.character ? (world.character.x + (world.character.width||0)/2) : null;
             const cy = world && world.character ? (world.character.y + (world.character.height||0)/2) : null;
-            // base speed in px/sec
+          
             const baseSpeed = 80 * (this.speed || 1);
             if (typeof cx === 'number' && typeof cy === 'number') {
                 const mycx = this.x + (this.width||0)/2;
@@ -35,36 +45,37 @@ class Boss extends Enemy {
                 const movedY = ny * baseSpeed * (dt / 1000);
                 this.x += movedX;
                 this.y += movedY;
-                // store actual speed in px/sec for animation timing
+              
                 this._currentSpeed = Math.hypot(nx * baseSpeed, ny * baseSpeed);
             } else {
-                // fallback to previous linear motion
+              
                 const speedPxPerSec = (this.speed || 1) * 60 * 0.8;
                 this.x += (this.vx || 0) * speedPxPerSec * (dt / 1000);
                 this.y += (this.vy || 0) * speedPxPerSec * (dt / 1000);
                 this._currentSpeed = Math.hypot((this.vx || 0) * speedPxPerSec, (this.vy || 0) * speedPxPerSec);
             }
-            // keep in bounds vertically
+          
             if (typeof window !== 'undefined' && window.world) {
                 const h = window.world.canvas.height;
                 this.y = Math.max(0, Math.min(h - this.height, this.y));
             }
         } catch (e) {
-            // on error, fallback to previous behaviour
+          
             const speedPxPerSec = (this.speed || 1) * 60 * 0.8;
             this.x += (this.vx || 0) * speedPxPerSec * (dt / 1000);
             this.y += (this.vy || 0) * speedPxPerSec * (dt / 1000);
         }
     }
 
-    // Override takeDamage to count bubble hits; only bubbles should call takeDamage(1)
+    /**
+     * Override takeDamage to count bubble hits; only bubbles should call takeDamage(1).
+     * @param {number} amount - Damage amount (bubble hits) to apply
+     */
     takeDamage(amount) {
-        // Each bubble hit counts as one towards the hitCount
         try {
             if (typeof amount === 'number' && amount > 0) {
                 this.hitCount += Math.round(amount);
                 this.health = Math.max(0, this.maxHealth - this.hitCount);
-                console.log('Boss hit by bubble. hits=', this.hitCount, 'remaining=', this.health);
                 if (this.hitCount >= this.maxHealth) {
                     this._dead = true;
                 }

@@ -1,35 +1,236 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Legal Notice</title>
+  <title>Impressum - Sharki</title>
   <link rel="stylesheet" href="./style.css" />
   <style>
-    body { max-width: 920px; margin: 0 auto; padding: 16px; }
-    h1 { margin-top: 12px; }
-    .card { background: rgba(255,255,255,0.85); padding: 16px; border-radius: 10px; }
-    .card h2 { margin: 0 0 8px; }
-    .muted { color: #666; font-size: 13px; }
-    a { color: #0a6cff; }
+    body { 
+      max-width: 800px; 
+      margin: 0 auto; 
+      padding: 20px; 
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+    }
+    h1 { 
+      margin-top: 12px; 
+      color: #0a6cff;
+      font-size: 32px;
+    }
+    h2 {
+      color: #333;
+      margin-top: 24px;
+      border-bottom: 2px solid #0a6cff;
+      padding-bottom: 8px;
+      font-size: 22px;
+    }
+    h3 {
+      color: #555;
+      margin-top: 16px;
+      font-size: 18px;
+    }
+    .card { 
+      background: rgba(255,255,255,0.95); 
+      padding: 24px; 
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .card p { 
+      margin: 8px 0; 
+    }
+    a { 
+      color: #0a6cff; 
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #0a6cff;
+      color: white;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 16px;
+    }
+    .back-link:hover {
+      background: #0854cc;
+      text-decoration: none;
+    }
+    
+    /* Mobile responsive styles */
+    @media screen and (max-width: 768px) {
+      body {
+        padding: 16px;
+        font-size: 15px;
+      }
+      h1 {
+        font-size: 26px;
+        margin-top: 8px;
+      }
+      h2 {
+        font-size: 20px;
+        margin-top: 20px;
+        padding-bottom: 6px;
+      }
+      h3 {
+        font-size: 17px;
+        margin-top: 14px;
+      }
+      .card {
+        padding: 18px;
+        border-radius: 8px;
+      }
+      .back-link {
+        padding: 12px 18px;
+        font-size: 15px;
+        width: 100%;
+        text-align: center;
+        box-sizing: border-box;
+      }
+    }
+    
+    /* Extra small mobile devices */
+    @media screen and (max-width: 480px) {
+      body {
+        padding: 12px;
+        font-size: 14px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+      h2 {
+        font-size: 18px;
+        margin-top: 16px;
+      }
+      h3 {
+        font-size: 16px;
+      }
+      .card {
+        padding: 14px;
+      }
+      .card p {
+        font-size: 14px;
+      }
+    }
+    
+    /* Mobile landscape mode */
+    @media screen and (max-height: 600px) and (orientation: landscape) {
+      body {
+        padding: 10px;
+        max-width: 100%;
+        height: auto;
+        min-height: 100vh;
+        overflow-y: auto;
+      }
+      h1 {
+        font-size: 20px;
+        margin-top: 4px;
+        margin-bottom: 8px;
+      }
+      h2 {
+        font-size: 17px;
+        margin-top: 12px;
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+      }
+      h3 {
+        font-size: 15px;
+        margin-top: 8px;
+        margin-bottom: 6px;
+      }
+      .card {
+        padding: 12px;
+        margin-bottom: 10px;
+      }
+      .card p {
+        margin: 4px 0;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .back-link {
+        margin-top: 10px;
+        padding: 8px 16px;
+        font-size: 14px;
+      }
+    }
+    
+    /* Very small landscape screens */
+    @media screen and (max-height: 450px) and (orientation: landscape) {
+      body {
+        padding: 8px;
+      }
+      h1 {
+        font-size: 18px;
+        margin-top: 2px;
+        margin-bottom: 6px;
+      }
+      h2 {
+        font-size: 15px;
+        margin-top: 10px;
+        margin-bottom: 6px;
+      }
+      h3 {
+        font-size: 14px;
+        margin-top: 6px;
+        margin-bottom: 4px;
+      }
+      .card {
+        padding: 10px;
+      }
+      .card p {
+        margin: 3px 0;
+        font-size: 12px;
+      }
+      .back-link {
+        margin-top: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Legal Notice</h1>
+  <h1>Impressum</h1>
   <div class="card">
-    <h2>Developer</h2>
-    <p><strong>Name:</strong> <em>Jonas Stegner</em></p>
-    <p><strong>Address:</strong> <em>Eppenbacher Straße 20, 35789 Weilmünster</em></p>
+    <h2>Angaben gemäß § 5 TMG</h2>
+    <p>
+      <strong>Jonas Stegner</strong><br>
+      Eppenbacherstraße 20<br>
+      35789 Weilmünster
+    </p>
 
-    <h2>Contact</h2>
-    <p><strong>Email:</strong> <em>jstjonas@gmx.de</em></p>
-    <p><strong>Phone:</strong> <em>+49 152 24463100</em></p>
+    <h2>Kontakt</h2>
+    <p>
+      E-Mail: <a href="mailto:jstjonas@gmx.de">jstjonas@gmx.de</a><br>
+      Telefon: +49 152 24463100
+    </p>
 
-    <h2>VAT ID</h2>
-    <p><em>Xy</em></p>
+    <h2>Haftungsausschluss</h2>
+    
+    <h3>Haftung für Inhalte</h3>
+    <p>
+      Die Inhalte dieser Seiten wurden mit größter Sorgfalt erstellt. 
+      Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen.
+    </p>
 
+    <h3>Haftung für Links</h3>
+    <p>
+      Unser Angebot enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen Einfluss haben. 
+      Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen.
+    </p>
+
+    <h3>Urheberrecht</h3>
+    <p>
+      Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem deutschen Urheberrecht. 
+      Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes 
+      bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers.
     </p>
   </div>
-  <p style="margin-top:12px"><a href="./index.html">Back to home</a></p>
+  
+  <a href="./index.html" class="back-link">← Zurück zum Spiel</a>
 </body>
 </html>

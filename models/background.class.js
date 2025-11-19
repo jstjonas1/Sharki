@@ -8,7 +8,7 @@ class BackgroundObject extends MovableObject {
         this.width = 1500;
         this.height = 480;
         this.isDark = false;
-        // load initial (light)
+      
         if (this.lightPath) this.loadImage(this.lightPath).catch(() => {});
     }
 
@@ -16,18 +16,18 @@ class BackgroundObject extends MovableObject {
         this.isDark = !!isDark;
         const path = this.isDark && this.darkPath ? this.darkPath : this.lightPath;
         if (path) {
-            // attempt to load chosen path safely: only set if load succeeds
+          
             const probe = new Image();
             probe.onload = () => { this.loadImage(path).catch(() => {}); };
             probe.onerror = () => {
-                // fallback: try lightPath if dark failed
+              
                 if (this.lightPath && path !== this.lightPath) this.loadImage(this.lightPath).catch(() => {});
             };
             probe.src = path;
         }
     }
 
-    // draw background so it always fills canvas height, preserving aspect ratio
+  
     drawTo(ctx) {
         try {
             if (this.img instanceof Image && this.img.complete) {
@@ -36,7 +36,7 @@ class BackgroundObject extends MovableObject {
                 const scale = canvasH / (trim.sh || 1);
                 const dw = Math.max(1, Math.round(trim.sw * scale));
                 const dh = Math.max(1, Math.round(trim.sh * scale));
-                // center horizontally by default
+              
                 const dx = Math.round((ctx.canvas.width - dw) / 2);
                 const dy = 0;
                 ctx.drawImage(this.img, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, dw, dh);
@@ -44,9 +44,9 @@ class BackgroundObject extends MovableObject {
                 return;
             }
         } catch (e) {
-            // fall through to default
+          
         }
-        // fallback to parent drawing (may draw a placeholder)
+      
         if (typeof super.drawTo === 'function') super.drawTo(ctx);
     }
 }

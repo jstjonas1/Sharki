@@ -1,5 +1,11 @@
-/** Player character with movement, animations, and actions. */
+/**
+ * Player character with movement, animations, health, and bubble shooting.
+ * @extends MovableObject
+ */
 class Character extends MovableObject {
+    /**
+     * Initialize the player character with idle animation and default properties.
+     */
     constructor() {
     try {
         super();
@@ -34,8 +40,8 @@ class Character extends MovableObject {
         } catch (e) {}
     }
 
-    // Fin slap: immediate close-range hit. Deals 2 damage to any enemy
-    // within a small box in front of the character.
+  
+  
     finSlap() {
         if (this._attackCooldown > 0) return false;
         this._attackCooldown = 500;
@@ -59,7 +65,10 @@ class Character extends MovableObject {
         return true;
     }
 
-    /** Shoot a bubble projectile. */
+    /**
+     * Shoot a bubble projectile in the facing direction, costs 0.5% of current score.
+     * @returns {boolean} True if bubble was shot, false if on cooldown
+     */
     shootBubble() {
         if (this._attackCooldown > 0) return false;
         this._attackCooldown = 400;
@@ -76,7 +85,7 @@ class Character extends MovableObject {
                 window.world.spawnBubble(bx, by, dir);
                 try { if (window.SFX) window.SFX.play('blub', 0.8); } catch (e) {}
         }
-        // play bubble-shoot animation (non-looping) at 80ms per frame
+      
         try {
             this.animState = 'attack_bubble';
             this.animationLoop = false;
@@ -86,23 +95,25 @@ class Character extends MovableObject {
         return true;
     }
 
+    /**
+     * Apply damage to the character with invulnerability period.
+     * @param {number} amount - Damage amount to apply
+     */
     takeDamage(amount) {
         const now = Date.now();
         if (now - this._lastHitTime < this._invulnMs) return; // temporarily invulnerable
         this._lastHitTime = now;
         this.health = Math.max(0, this.health - amount);
-        console.log('Character took', amount, 'damage. Health=', this.health);
-        if (this.health <= 0) {
-            console.log('Character died');
-            // TODO: handle respawn or game over
-        }
     }
 
-    // called each frame by the world
+    /**
+     * Update character position, animation state, and handle input.
+     * @param {number} dt - Delta time in milliseconds
+     */
     update(dt) {
         if (this._attackCooldown > 0) this._attackCooldown = Math.max(0, this._attackCooldown - dt);
 
-        // handle temporary visual size boost timer
+      
         if (typeof this.visualSizeTimer === 'number' && this.visualSizeTimer > 0) {
             this.visualSizeTimer = Math.max(0, this.visualSizeTimer - dt);
             if (this.visualSizeTimer === 0) {
@@ -110,7 +121,7 @@ class Character extends MovableObject {
             }
         }
 
-        // movement via global input state (arrow keys or WASD) with acceleration/deceleration
+      
         try {
             const input = (typeof window !== 'undefined' && window.input) ? window.input : null;
             if (input) {
@@ -119,47 +130,47 @@ class Character extends MovableObject {
                 if (input.right) vx += 1;
                 if (input.up) vy -= 1;
                 if (input.down) vy += 1;
-                // normalize diagonal so diagonal isn't faster
+              
                 if (vx !== 0 && vy !== 0) {
                     const inv = 1 / Math.sqrt(2);
                     vx *= inv; vy *= inv;
                 }
-                // set target direction
+              
                 this._targetVx = vx;
                 this._targetVy = vy;
-                // determine whether accelerating or decelerating
+              
                 const targetMag = Math.hypot(this._targetVx, this._targetVy);
                 const curMag = Math.hypot(this.vx, this.vy);
-                // decide lerp factor per ms
+              
                 if (targetMag > curMag + 1e-3) {
-                    // accelerating towards target over _accelTime
+                  
                     const step = Math.min(1, dt / this._accelTime);
                     this.vx += (this._targetVx - this.vx) * step;
                     this.vy += (this._targetVy - this.vy) * step;
                 } else if (targetMag < curMag - 1e-3) {
-                    // decelerating over _decelTime
+                  
                     const step = Math.min(1, dt / this._decelTime);
                     this.vx += (this._targetVx - this.vx) * step;
                     this.vy += (this._targetVy - this.vy) * step;
                 } else {
-                    // small adjustments
+                  
                     this.vx = this._targetVx; this.vy = this._targetVy;
                 }
 
-                // now move according to current velocity vector scaled by base speed
+              
                 const pxPerSec = (this.speed || 1) * 60;
                 this.x += this.vx * pxPerSec * (dt / 1000);
                 this.y += this.vy * pxPerSec * (dt / 1000);
-                // store current movement speed in px/sec for animation timing
+              
                 this._currentSpeed = Math.hypot(this.vx * pxPerSec, this.vy * pxPerSec);
-                // flipX based on current movement
+              
                 if (this.vx < 0) this.flipX = true;
                 else if (this.vx > 0) this.flipX = false;
-                // clamp to world bounds if available
+              
                 if (typeof window !== 'undefined' && window.world && window.world.canvas) {
                     const cw = window.world.canvas.width;
                     const ch = window.world.canvas.height;
-                    // allow up to 50% of the character sprite to go off-screen
+                  
                     const halfW = (this.width || 32) / 2;
                     const halfH = (this.height || 32) / 2;
                     this.x = Math.max(-halfW, Math.min(cw - halfW, this.x));
@@ -167,14 +178,14 @@ class Character extends MovableObject {
                 }
             }
         } catch (e) {
-            // ignore input errors
+          
         }
 
-            // Animation state switching: prefer swim when moving, long_idle when stationary for long, idle otherwise
+          
             try {
                 const speed = Math.hypot(this.vx, this.vy);
                 if (this._attackCooldown > 0 && this.animState !== 'attack') {
-                    // play attack animation once
+                  
                     this.animState = 'attack';
                     this.animationLoop = false;
                     this._onAnimationEnd = () => { this.animationLoop = true; this.animState = 'idle'; };
@@ -186,7 +197,7 @@ class Character extends MovableObject {
                         this.loadFramesPattern('./assets/img/sharki/1sharkie/3swim/', ['{i}.png'], 7, 80).catch(() => {});
                     }
                 } else {
-                    // stationary: pick long_idle if available based on random timer
+                  
                     if (this.animState !== 'long_idle' && Math.random() < 0.01) {
                         this.animState = 'long_idle';
                         this.animationLoop = true;

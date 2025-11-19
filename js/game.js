@@ -55,7 +55,7 @@ const SFX = (() => {
     }
     function getVolume() { return Math.max(0, Math.min(1, state.volume || 0)); }
     function isMuted() { return !!state.muted; }
-    // initialize from storage if present
+    
     try {
         const mv = parseInt(localStorage.getItem('sharkyVolume') || '100', 10);
         if (!isNaN(mv)) state.volume = Math.max(0, Math.min(1, mv / 100));
@@ -116,7 +116,7 @@ const BGM = (() => {
         try { document.addEventListener('pointerdown', one, { once: true }); } catch (_){ }
         try { document.addEventListener('keydown', one, { once: true }); } catch (_){ }
     }
-    // init from storage
+    
     try {
         const mv = parseInt(localStorage.getItem('sharkyMusicVolume') || '100', 10);
         if (!isNaN(mv)) state.volume = Math.max(0, Math.min(1, mv / 100));
@@ -168,7 +168,75 @@ function hideStartMenu() {
     _menuOpen = false;
 }
 
+/**
+ * Restore saved game mode selection.
+ */
+function restoreSavedMode() {
+    const savedMode = localStorage.getItem('sharkyStartMode');
+    if (savedMode) {
+        const rb = document.querySelector('input[name="startMode"][value="' + savedMode + '"]');
+        if (rb) rb.checked = true;
+    }
+}
+
+/**
+ * Restore saved difficulty selection.
+ */
+function restoreSavedDifficulty() {
+    const savedDiff = localStorage.getItem('sharkyDifficulty');
+    if (savedDiff) {
+        const rb = document.querySelector('input[name="difficulty"][value="' + savedDiff + '"]');
+        if (rb) rb.checked = true;
+    }
+}
+
+/**
+ * Restore saved dark mode toggle states.
+ */
+function restoreSavedDarkMode() {
+    const dark = localStorage.getItem('sharkyDarkMode') === '1';
+    const d1 = document.getElementById('darkToggleInline');
+    const d2 = document.getElementById('darkToggle');
+    if (d1) d1.checked = dark;
+    if (d2) d2.checked = dark;
+}
+
+/**
+ * Restore saved sound controls.
+ */
+function restoreSavedSoundControls() {
+    const mt = document.getElementById('muteToggleInline');
+    const vr = document.getElementById('volumeRange');
+    const vl = document.getElementById('volLabel');
+    try {
+        const sv = parseInt(localStorage.getItem('sharkyVolume') || '100', 10);
+        const sm = localStorage.getItem('sharkyMuted') === '1';
+        if (mt) mt.checked = sm;
+        if (vr) vr.value = String(isNaN(sv) ? 100 : Math.max(0, Math.min(100, sv)));
+        if (vl) vl.textContent = ((isNaN(sv) ? 100 : Math.max(0, Math.min(100, sv)))) + '%';
+    } catch (e) {}
+}
+
+/**
+ * Restore saved music controls.
+ */
+function restoreSavedMusicControls() {
+    const mmt = document.getElementById('musicMuteToggle');
+    const mvr = document.getElementById('musicVolumeRange');
+    const mvl = document.getElementById('musicVolLabel');
+    try {
+        const mv = parseInt(localStorage.getItem('sharkyMusicVolume') || '100', 10);
+        const mm = localStorage.getItem('sharkyMusicMuted') === '1';
+        if (mmt) mmt.checked = mm;
+        if (mvr) mvr.value = String(isNaN(mv) ? 100 : Math.max(0, Math.min(100, mv)));
+        if (mvl) mvl.textContent = ((isNaN(mv) ? 100 : Math.max(0, Math.min(100, mv)))) + '%';
+    } catch (e) {}
+}
+
 /** Show the start menu and restore last selections. */
+/**
+ * Show the start menu screen.
+ */
 function showStartMenu() {
     const ss = document.getElementById('startScreen');
     if (!ss) return;
@@ -178,44 +246,20 @@ function showStartMenu() {
     ss.style.pointerEvents = 'auto';
     ss.style.zIndex = '10010';
     _menuOpen = true;
-    // Start background music and hook a user-gesture fallback
     try { BGM.ensureStarted(); BGM.hookAutoResume(); } catch (e) {}
+    restoreAllSavedSettings();
+}
+
+/**
+ * Restore all saved UI settings.
+ */
+function restoreAllSavedSettings() {
     try {
-        const savedMode = localStorage.getItem('sharkyStartMode');
-        if (savedMode) {
-            const rb = document.querySelector('input[name="startMode"][value="' + savedMode + '"]');
-            if (rb) rb.checked = true;
-        }
-        const savedDiff = localStorage.getItem('sharkyDifficulty');
-        if (savedDiff) {
-            const rb = document.querySelector('input[name="difficulty"][value="' + savedDiff + '"]');
-            if (rb) rb.checked = true;
-        }
-        const dark = localStorage.getItem('sharkyDarkMode') === '1';
-        const d1 = document.getElementById('darkToggleInline'); if (d1) d1.checked = dark;
-        const d2 = document.getElementById('darkToggle'); if (d2) d2.checked = dark;
-        // Sound controls (SFX)
-        const mt = document.getElementById('muteToggleInline');
-        const vr = document.getElementById('volumeRange');
-        const vl = document.getElementById('volLabel');
-        try {
-            const sv = parseInt(localStorage.getItem('sharkyVolume') || '100', 10);
-            const sm = localStorage.getItem('sharkyMuted') === '1';
-            if (mt) mt.checked = sm;
-            if (vr) vr.value = String(isNaN(sv) ? 100 : Math.max(0, Math.min(100, sv)));
-            if (vl) vl.textContent = ((isNaN(sv) ? 100 : Math.max(0, Math.min(100, sv)))) + '%';
-        } catch (e) {}
-        // Music controls (BGM)
-        const mmt = document.getElementById('musicMuteToggle');
-        const mvr = document.getElementById('musicVolumeRange');
-        const mvl = document.getElementById('musicVolLabel');
-        try {
-            const mv = parseInt(localStorage.getItem('sharkyMusicVolume') || '100', 10);
-            const mm = localStorage.getItem('sharkyMusicMuted') === '1';
-            if (mmt) mmt.checked = mm;
-            if (mvr) mvr.value = String(isNaN(mv) ? 100 : Math.max(0, Math.min(100, mv)));
-            if (mvl) mvl.textContent = ((isNaN(mv) ? 100 : Math.max(0, Math.min(100, mv)))) + '%';
-        } catch (e) {}
+        restoreSavedMode();
+        restoreSavedDifficulty();
+        restoreSavedDarkMode();
+        restoreSavedSoundControls();
+        restoreSavedMusicControls();
     } catch (e) {}
 }
 
@@ -230,24 +274,39 @@ function applyDarkModeUI(checked) {
     const d2 = document.getElementById('darkToggle'); if (d2) d2.checked = checked;
 }
 
-/** Create a fresh world instance and start the game. */
-function startGame() {
-    canvas = document.getElementById('gameCanvas');
-    if (!canvas) return;
-    const mode = getSelected('startMode', 'light');
-    const difficulty = getSelected('difficulty', 'normal');
+/**
+ * Save game settings to localStorage.
+ * @param {string} mode
+ * @param {string} difficulty
+ */
+function saveGameSettings(mode, difficulty) {
     try { localStorage.setItem('sharkyStartMode', mode); } catch (e) {}
     try { localStorage.setItem('sharkyDifficulty', difficulty); } catch (e) {}
     try { localStorage.setItem('sharkyDarkMode', mode === 'dark' ? '1' : '0'); } catch (e) {}
-    try { hideHighscoresUI(); } catch (e) {}
-    try { hideGameOverUI(); } catch (e) {}
+}
+
+/**
+ * Destroy existing world instance.
+ */
+function destroyWorld() {
     if (world) {
         try { world.destroy && world.destroy(); } catch (e) {}
         try { world.running = false; } catch (e) {}
         try { window.world = null; } catch (e) {}
         world = null;
     }
+}
 
+/** Create a fresh world instance and start the game. */
+function startGame() {
+    canvas = document.getElementById('gameCanvas');
+    if (!canvas) return;
+    const mode = getSelected('startMode', 'light');
+    const difficulty = getSelected('difficulty', 'normal');
+    saveGameSettings(mode, difficulty);
+    try { hideHighscoresUI(); } catch (e) {}
+    try { hideGameOverUI(); } catch (e) {}
+    destroyWorld();
     world = new World(canvas, { autoStart: false });
     try { window.world = world; } catch (e) {}
     world.difficulty = difficulty;
@@ -258,40 +317,42 @@ function startGame() {
     hideStartMenu();
 }
 
-/** Initialize UI wiring, overlays, and preload assets. */
-function init() {
-    canvas = document.getElementById('gameCanvas');
-    const tbtn = document.getElementById('touchModeBtn');
-    if (tbtn) tbtn.style.display = 'none';
-    showStartMenu();
-    const startBtn = document.getElementById('startBtn');
-    if (startBtn) startBtn.addEventListener('click', startGame);
-    const d1 = document.getElementById('darkToggleInline');
-    const d2 = document.getElementById('darkToggle');
-    const muteInline = document.getElementById('muteToggleInline');
-    const volumeRange = document.getElementById('volumeRange');
-    const volLabel = document.getElementById('volLabel');
-    const musicMute = document.getElementById('musicMuteToggle');
-    const musicRange = document.getElementById('musicVolumeRange');
-    const musicVolLabel = document.getElementById('musicVolLabel');
-    const touchToggle = document.getElementById('touchToggle');
-    const howTo = document.getElementById('howToBtn');
+/**
+ * Wire up dark mode toggle listeners.
+ * @param {HTMLElement} d1
+ * @param {HTMLElement} d2
+ */
+function setupDarkModeListeners(d1, d2) {
     if (d1) d1.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
     if (d2) d2.addEventListener('change', (e) => applyDarkModeUI(!!e.target.checked));
-    if (howTo) howTo.addEventListener('click', () => { try { showHowToOverlay(); } catch (e) {} });
-    // Sound controls wiring
+}
+
+/**
+ * Wire up sound control listeners.
+ * @param {HTMLElement} muteInline
+ * @param {HTMLElement} volumeRange
+ * @param {HTMLElement} volLabel
+ */
+function setupSoundControls(muteInline, volumeRange, volLabel) {
     const syncVolLabel = () => { if (volLabel && volumeRange) volLabel.textContent = `${volumeRange.value}%`; };
     if (muteInline) muteInline.addEventListener('change', (e) => {
         const m = !!e.target.checked; SFX.setMuted(m);
     });
     if (volumeRange) {
-        // initialize from storage
         try { const sv = parseInt(localStorage.getItem('sharkyVolume') || '100', 10); if (!isNaN(sv)) volumeRange.value = String(Math.max(0, Math.min(100, sv))); } catch(_){}
         syncVolLabel();
         volumeRange.addEventListener('input', () => { syncVolLabel(); SFX.setVolume((parseInt(volumeRange.value,10)||0)/100); });
         volumeRange.addEventListener('change', () => { syncVolLabel(); SFX.setVolume((parseInt(volumeRange.value,10)||0)/100); });
     }
-    // Music controls wiring
+}
+
+/**
+ * Wire up music control listeners.
+ * @param {HTMLElement} musicMute
+ * @param {HTMLElement} musicRange
+ * @param {HTMLElement} musicVolLabel
+ */
+function setupMusicControls(musicMute, musicRange, musicVolLabel) {
     const syncMusicLabel = () => { if (musicVolLabel && musicRange) musicVolLabel.textContent = `${musicRange.value}%`; };
     if (musicMute) musicMute.addEventListener('change', (e) => { const m = !!e.target.checked; BGM.setMuted(m); BGM.ensureStarted(); });
     if (musicRange) {
@@ -301,13 +362,15 @@ function init() {
         musicRange.addEventListener('input', apply);
         musicRange.addEventListener('change', apply);
     }
-    // Try to start music on any start button click as well (user gesture)
-    if (startBtn) startBtn.addEventListener('click', () => { try { BGM.ensureStarted(); } catch(e){} });
-    const r = document.getElementById('restartBtn');
-    if (r) r.addEventListener('click', () => { if (world) world.restartGame(); });
-    // Manual Touch toggle: when user toggles, disable auto and reflect in overlay
+}
+
+/**
+ * Wire up touch toggle listener.
+ * @param {HTMLElement} touchToggle
+ */
+function setupTouchToggle(touchToggle) {
     window.__userAutoDisabled = false;
-    window.__userForcedTouch = undefined; // undefined means no user override yet
+    window.__userForcedTouch = undefined;
     if (touchToggle) {
         touchToggle.addEventListener('change', (e) => {
             const want = !!e.target.checked;
@@ -317,44 +380,82 @@ function init() {
             if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(want);
         });
     }
+}
 
+/**
+ * Restore saved touch mode preference.
+ * @param {HTMLElement} touchToggle
+ */
+function restoreTouchMode(touchToggle) {
+    try {
+        const saved = localStorage.getItem('sharkyTouchForced');
+        if (saved === '1' || saved === '0') {
+            window.__userAutoDisabled = true;
+            window.__userForcedTouch = (saved === '1');
+            if (touchToggle) touchToggle.checked = (saved === '1');
+            if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(saved === '1');
+        }
+    } catch (e) {}
+}
+
+/**
+ * Setup mobile device detection and orientation handling.
+ */
+function setupMobileDetection() {
+    try {
+        const isMobileDevice = detectMobileDevice();
+        window.__isMobileDevice = isMobileDevice;
+        
+        if (isMobileDevice && !window.__userAutoDisabled && typeof window.__userForcedTouch === 'undefined') {
+            handleMobileOrientation();
+            window.addEventListener('resize', handleMobileOrientation);
+            window.addEventListener('orientationchange', handleMobileOrientation);
+        } else if (!isMobileDevice) {
+            hideMobileRotatePrompt();
+        }
+    } catch (e) {}
+}
+
+/**
+ * Preload sound effects.
+ */
+function preloadSounds() {
+    try {
+        SFX.load('blub', './audio/blub.mp3');
+        SFX.load('essen', './audio/essen.mp3');
+        SFX.load('naw', './audio/naw.mp3');
+        SFX.load('wow', './audio/wow.mp3');
+        SFX.load('nicescore', './audio/nicescore.mp3');
+    } catch (e) {}
+}
+
+/** Initialize UI wiring, overlays, and preload assets. */
+function init() {
+    canvas = document.getElementById('gameCanvas');
+    const tbtn = document.getElementById('touchModeBtn');
+    if (tbtn) tbtn.style.display = 'none';
+    showStartMenu();
+    const startBtn = document.getElementById('startBtn');
+    if (startBtn) startBtn.addEventListener('click', startGame);
+    const howTo = document.getElementById('howToBtn');
+    if (howTo) howTo.addEventListener('click', () => { try { showHowToOverlay(); } catch (e) {} });
+    const r = document.getElementById('restartBtn');
+    if (r) r.addEventListener('click', () => { if (world) world.restartGame(); });
+    if (startBtn) startBtn.addEventListener('click', () => { try { BGM.ensureStarted(); } catch(e){} });
+    setupDarkModeListeners(document.getElementById('darkToggleInline'), document.getElementById('darkToggle'));
+    setupSoundControls(document.getElementById('muteToggleInline'), document.getElementById('volumeRange'), document.getElementById('volLabel'));
+    setupMusicControls(document.getElementById('musicMuteToggle'), document.getElementById('musicVolumeRange'), document.getElementById('musicVolLabel'));
+    const touchToggle = document.getElementById('touchToggle');
+    setupTouchToggle(touchToggle);
     monitorEndState();
     ensurePauseOverlay();
     ensureTouchOverlay();
-
-        
-        // Restore manual preference if stored
-        try {
-            const saved = localStorage.getItem('sharkyTouchForced');
-            if (saved === '1' || saved === '0') {
-                window.__userAutoDisabled = true;
-                window.__userForcedTouch = (saved === '1');
-                if (touchToggle) touchToggle.checked = (saved === '1');
-                if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(saved === '1');
-            }
-        } catch (e) {}
-        // One-time auto check: if viewport smaller than canvas, enable touch initially (only if no manual pref).
-        try {
-            const nominal = { w: 720, h: 480 };
-            const vw = window.innerWidth || document.documentElement.clientWidth || 0;
-            const vh = window.innerHeight || document.documentElement.clientHeight || 0;
-            const needTouch = (vw < nominal.w) || (vh < nominal.h);
-            if (!window.__userAutoDisabled && typeof window.__userForcedTouch === 'undefined') {
-                if (touchToggle) touchToggle.checked = !!needTouch;
-                if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(!!needTouch);
-            }
-        } catch (e) {}
-
-        try {
-            SFX.load('blub', './audio/blub.mp3');
-            SFX.load('essen', './audio/essen.mp3');
-            SFX.load('naw', './audio/naw.mp3');
-            SFX.load('wow', './audio/wow.mp3');
-            SFX.load('nicescore', './audio/nicescore.mp3');
-        } catch (e) {}
+    ensureMobileRotatePrompt();
+    restoreTouchMode(touchToggle);
+    setupMobileDetection();
+    preloadSounds();
 }
 
-// Expose for inline onload
 window.init = init;
 
 /** Minimal Game Over + Highscores UI monitor and builders. */
@@ -362,31 +463,40 @@ let _endUiVisible = false;
 let _victoryUiVisible = false;
 let _suppressEndOverlayUntil = 0;
 
+/**
+ * Monitor and show/hide end state UI (game over or victory).
+ */
 function monitorEndState() {
     function tick() {
         try {
-        const now = Date.now();
-        const suppressed = _suppressEndOverlayUntil && now < _suppressEndOverlayUntil;
-        const hsEl = document.getElementById('highscoresUI');
-        const hsOpen = !!(hsEl && hsEl.style.display !== 'none');
-        if (_menuOpen) {
-                // ensure overlay stays closed while menu is open
-                if (_endUiVisible) hideGameOverUI();
-                if (_victoryUiVisible) hideVictoryUI();
-            } else if (world && world.gameOver && !suppressed && !hsOpen) {
-                if (!_endUiVisible) showGameOverUI();
-                if (_victoryUiVisible) hideVictoryUI();
-            } else if (world && world.victory && !suppressed && !hsOpen) {
-                if (!_victoryUiVisible) showVictoryUI();
-                if (_endUiVisible) hideGameOverUI();
-            } else {
-                if (_endUiVisible) hideGameOverUI();
-                if (_victoryUiVisible) hideVictoryUI();
-            }
+            updateEndStateUI();
         } catch (e) {}
         requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
+}
+
+/**
+ * Update end state UI visibility based on game state.
+ */
+function updateEndStateUI() {
+    const now = Date.now();
+    const suppressed = _suppressEndOverlayUntil && now < _suppressEndOverlayUntil;
+    const hsEl = document.getElementById('highscoresUI');
+    const hsOpen = !!(hsEl && hsEl.style.display !== 'none');
+    if (_menuOpen) {
+        if (_endUiVisible) hideGameOverUI();
+        if (_victoryUiVisible) hideVictoryUI();
+    } else if (world && world.gameOver && !suppressed && !hsOpen) {
+        if (!_endUiVisible) showGameOverUI();
+        if (_victoryUiVisible) hideVictoryUI();
+    } else if (world && world.victory && !suppressed && !hsOpen) {
+        if (!_victoryUiVisible) showVictoryUI();
+        if (_endUiVisible) hideGameOverUI();
+    } else {
+        if (_endUiVisible) hideGameOverUI();
+        if (_victoryUiVisible) hideVictoryUI();
+    }
 }
 
 /**
@@ -436,9 +546,11 @@ function showHowToOverlay() {
     ov.style.display = 'flex';
 }
 
-function showGameOverUI() {
-    const ov = buildOverlay('gameOverUI');
-    ov.innerHTML = '';
+/**
+ * Create game over UI content structure.
+ * @returns {{inner: HTMLDivElement, nameInput: HTMLInputElement, confirmBtn: HTMLButtonElement}}
+ */
+function createGameOverContent() {
     const inner = document.createElement('div');
     inner.style.background = '#0b2233';
     inner.style.padding = '16px';
@@ -449,42 +561,84 @@ function showGameOverUI() {
     const score = world ? (world.score || 0) : 0;
     const secs = world ? Math.round((world._finalElapsedMs || world.elapsedMs || 0) / 1000) : 0;
     const diff = world ? (world.difficulty || 'normal') : 'normal';
-    const title = document.createElement('h2'); title.innerText = 'Game Over'; title.style.margin = '0 0 8px';
+    const title = document.createElement('h2');
+    title.innerText = 'Game Over';
+    title.style.margin = '0 0 8px';
     const deadImg = document.createElement('img');
     deadImg.src = './assets/img/sharki/1sharkie/6dead/1poisoned/9.png';
     deadImg.alt = 'Sharkie Game Over';
-    deadImg.style.display = 'block'; deadImg.style.margin = '0 auto 8px';
-    deadImg.style.width = '120px'; deadImg.style.height = 'auto';
-    const info = document.createElement('div'); info.style.margin = '0 0 12px'; info.innerText = `Score: ${score} • Time: ${secs}s • ${diff}`;
-    const nameWrap = document.createElement('div'); nameWrap.style.margin = '0 0 10px'; nameWrap.style.textAlign = 'left';
-    const nameLbl = document.createElement('label'); nameLbl.innerText = 'Name for High Score:'; nameLbl.style.display = 'block'; nameLbl.style.marginBottom = '6px';
-    const nameInput = document.createElement('input'); nameInput.id = 'playerName'; nameInput.type = 'text'; nameInput.maxLength = 24; nameInput.style.width = '100%'; nameInput.style.padding = '8px'; nameInput.style.borderRadius = '6px'; nameInput.style.border = '1px solid rgba(255,255,255,0.1)'; nameInput.style.background = 'transparent'; nameInput.style.color = 'white';
-    try { const prev = localStorage.getItem('sharkyPlayerName'); if (prev) nameInput.value = prev; } catch (e) {}
-    nameWrap.appendChild(nameLbl); nameWrap.appendChild(nameInput);
-    const btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '10px'; btnRow.style.justifyContent = 'center'; btnRow.style.flexWrap = 'wrap';
-    const confirmBtn = document.createElement('button'); confirmBtn.innerText = 'Confirm'; confirmBtn.style.padding = '8px 12px';
+    deadImg.style.display = 'block';
+    deadImg.style.margin = '0 auto 8px';
+    deadImg.style.width = '120px';
+    deadImg.style.height = 'auto';
+    const info = document.createElement('div');
+    info.style.margin = '0 0 12px';
+    info.innerText = `Score: ${score} • Time: ${secs}s • ${diff}`;
+    const nameWrap = document.createElement('div');
+    nameWrap.style.margin = '0 0 10px';
+    nameWrap.style.textAlign = 'left';
+    const nameLbl = document.createElement('label');
+    nameLbl.innerText = 'Name for High Score:';
+    nameLbl.style.display = 'block';
+    nameLbl.style.marginBottom = '6px';
+    const nameInput = document.createElement('input');
+    nameInput.id = 'playerName';
+    nameInput.type = 'text';
+    nameInput.maxLength = 24;
+    nameInput.style.width = '100%';
+    nameInput.style.padding = '8px';
+    nameInput.style.borderRadius = '6px';
+    nameInput.style.border = '1px solid rgba(255,255,255,0.1)';
+    nameInput.style.background = 'transparent';
+    nameInput.style.color = 'white';
+    try {
+        const prev = localStorage.getItem('sharkyPlayerName');
+        if (prev) nameInput.value = prev;
+    } catch (e) {}
+    nameWrap.appendChild(nameLbl);
+    nameWrap.appendChild(nameInput);
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '10px';
+    btnRow.style.justifyContent = 'center';
+    btnRow.style.flexWrap = 'wrap';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.innerText = 'Confirm';
+    confirmBtn.style.padding = '8px 12px';
     btnRow.appendChild(confirmBtn);
-    inner.appendChild(title); inner.appendChild(deadImg); inner.appendChild(info); inner.appendChild(nameWrap); inner.appendChild(btnRow);
+    inner.appendChild(title);
+    inner.appendChild(deadImg);
+    inner.appendChild(info);
+    inner.appendChild(nameWrap);
+    inner.appendChild(btnRow);
+    return { inner, nameInput, confirmBtn };
+}
+
+/**
+ * Handle game over confirmation.
+ * @param {HTMLInputElement} nameInput
+ */
+function handleGameOverConfirm(nameInput) {
+    try {
+        const name = (nameInput.value || 'Player').trim();
+        try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
+        const s = world ? (world.score || 0) : 0;
+        const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
+        const d = world ? (world.difficulty || 'normal') : 'normal';
+        const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
+        if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
+        try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
+        hideGameOverUI();
+        showHighscoresUI();
+    } catch (e) {}
+}
+
+function showGameOverUI() {
+    const ov = buildOverlay('gameOverUI');
+    ov.innerHTML = '';
+    const { inner, nameInput, confirmBtn } = createGameOverContent();
     ov.appendChild(inner);
-
-    confirmBtn.addEventListener('click', () => {
-        try {
-            const name = (nameInput.value || 'Player').trim();
-            try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
-            const s = world ? (world.score || 0) : 0;
-            const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
-            const d = world ? (world.difficulty || 'normal') : 'normal';
-            // In Easy mode, store half the score to keep leaderboard fair
-            const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
-            if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
-            try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
-            // Switch to High Scores view immediately
-            hideGameOverUI();
-            showHighscoresUI();
-        } catch (e) {}
-    });
-                // No direct menu from Game Over; path continues via High Scores
-
+    confirmBtn.addEventListener('click', () => handleGameOverConfirm(nameInput));
     ov.style.display = 'flex';
     _endUiVisible = true;
 }
@@ -495,9 +649,11 @@ function hideGameOverUI() {
     _endUiVisible = false;
 }
 
-function showVictoryUI() {
-    const ov = buildOverlay('victoryUI');
-    ov.innerHTML = '';
+/**
+ * Create victory UI content structure.
+ * @returns {{inner: HTMLDivElement, nameInput: HTMLInputElement, confirmBtn: HTMLButtonElement}}
+ */
+function createVictoryContent() {
     const inner = document.createElement('div');
     inner.style.background = '#0b2233';
     inner.style.padding = '16px';
@@ -508,40 +664,84 @@ function showVictoryUI() {
     const score = world ? (world.score || 0) : 0;
     const secs = world ? Math.round((world._finalElapsedMs || world.elapsedMs || 0) / 1000) : 0;
     const diff = world ? (world.difficulty || 'normal') : 'normal';
-    const title = document.createElement('h2'); title.innerText = 'You Win!'; title.style.margin = '0 0 8px';
+    const title = document.createElement('h2');
+    title.innerText = 'You Win!';
+    title.style.margin = '0 0 8px';
     const idleImg = document.createElement('img');
     idleImg.src = './assets/img/sharki/1sharkie/1idle/1.png';
     idleImg.alt = 'Sharkie Victory';
-    idleImg.style.display = 'block'; idleImg.style.margin = '0 auto 8px';
-    idleImg.style.width = '120px'; idleImg.style.height = 'auto';
-    const info = document.createElement('div'); info.style.margin = '0 0 12px'; info.innerText = `Score: ${score} • Time: ${secs}s • ${diff}`;
-    const nameWrap = document.createElement('div'); nameWrap.style.margin = '0 0 10px'; nameWrap.style.textAlign = 'left';
-    const nameLbl = document.createElement('label'); nameLbl.innerText = 'Name for High Score:'; nameLbl.style.display = 'block'; nameLbl.style.marginBottom = '6px';
-    const nameInput = document.createElement('input'); nameInput.id = 'playerNameVictory'; nameInput.type = 'text'; nameInput.maxLength = 24; nameInput.style.width = '100%'; nameInput.style.padding = '8px'; nameInput.style.borderRadius = '6px'; nameInput.style.border = '1px solid rgba(255,255,255,0.1)'; nameInput.style.background = 'transparent'; nameInput.style.color = 'white';
-    try { const prev = localStorage.getItem('sharkyPlayerName'); if (prev) nameInput.value = prev; } catch (e) {}
-    nameWrap.appendChild(nameLbl); nameWrap.appendChild(nameInput);
-    const btnRow = document.createElement('div'); btnRow.style.display = 'flex'; btnRow.style.gap = '10px'; btnRow.style.justifyContent = 'center'; btnRow.style.flexWrap = 'wrap';
-    const confirmBtn = document.createElement('button'); confirmBtn.innerText = 'Confirm'; confirmBtn.style.padding = '8px 12px';
+    idleImg.style.display = 'block';
+    idleImg.style.margin = '0 auto 8px';
+    idleImg.style.width = '120px';
+    idleImg.style.height = 'auto';
+    const info = document.createElement('div');
+    info.style.margin = '0 0 12px';
+    info.innerText = `Score: ${score} • Time: ${secs}s • ${diff}`;
+    const nameWrap = document.createElement('div');
+    nameWrap.style.margin = '0 0 10px';
+    nameWrap.style.textAlign = 'left';
+    const nameLbl = document.createElement('label');
+    nameLbl.innerText = 'Name for High Score:';
+    nameLbl.style.display = 'block';
+    nameLbl.style.marginBottom = '6px';
+    const nameInput = document.createElement('input');
+    nameInput.id = 'playerNameVictory';
+    nameInput.type = 'text';
+    nameInput.maxLength = 24;
+    nameInput.style.width = '100%';
+    nameInput.style.padding = '8px';
+    nameInput.style.borderRadius = '6px';
+    nameInput.style.border = '1px solid rgba(255,255,255,0.1)';
+    nameInput.style.background = 'transparent';
+    nameInput.style.color = 'white';
+    try {
+        const prev = localStorage.getItem('sharkyPlayerName');
+        if (prev) nameInput.value = prev;
+    } catch (e) {}
+    nameWrap.appendChild(nameLbl);
+    nameWrap.appendChild(nameInput);
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '10px';
+    btnRow.style.justifyContent = 'center';
+    btnRow.style.flexWrap = 'wrap';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.innerText = 'Confirm';
+    confirmBtn.style.padding = '8px 12px';
     btnRow.appendChild(confirmBtn);
-    inner.appendChild(title); inner.appendChild(idleImg); inner.appendChild(info); inner.appendChild(nameWrap); inner.appendChild(btnRow);
+    inner.appendChild(title);
+    inner.appendChild(idleImg);
+    inner.appendChild(info);
+    inner.appendChild(nameWrap);
+    inner.appendChild(btnRow);
+    return { inner, nameInput, confirmBtn };
+}
+
+/**
+ * Handle victory confirmation.
+ * @param {HTMLInputElement} nameInput
+ */
+function handleVictoryConfirm(nameInput) {
+    try {
+        const name = (nameInput.value || 'Player').trim();
+        try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
+        const s = world ? (world.score || 0) : 0;
+        const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
+        const d = world ? (world.difficulty || 'normal') : 'normal';
+        const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
+        if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
+        try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
+        hideVictoryUI();
+        showHighscoresUI();
+    } catch (e) {}
+}
+
+function showVictoryUI() {
+    const ov = buildOverlay('victoryUI');
+    ov.innerHTML = '';
+    const { inner, nameInput, confirmBtn } = createVictoryContent();
     ov.appendChild(inner);
-
-    confirmBtn.addEventListener('click', () => {
-        try {
-            const name = (nameInput.value || 'Player').trim();
-            try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
-            const s = world ? (world.score || 0) : 0;
-            const t = world ? (world._finalElapsedMs || world.elapsedMs || 0) : 0;
-            const d = world ? (world.difficulty || 'normal') : 'normal';
-            // In Easy mode, store half the score to keep leaderboard fair
-            const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
-            if (typeof saveHighscoreRecord === 'function') saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
-            try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
-            hideVictoryUI();
-            showHighscoresUI();
-        } catch (e) {}
-    });
-
+    confirmBtn.addEventListener('click', () => handleVictoryConfirm(nameInput));
     ov.style.display = 'flex';
     _victoryUiVisible = true;
 }
@@ -573,7 +773,7 @@ function showHighscoresUI() {
         try { if (world) { world.gameOver = false; world.victory = false; world.restartGame(); } } catch (e) {}
     });
     toMenu.addEventListener('click', () => {
-        // mark menu open immediately and clear end-state so monitor won't re-open overlay
+      
         _menuOpen = true;
         try { if (world) { world.gameOver = false; world.victory = false; world.running = false; } } catch (e) {}
         try { _suppressEndOverlayUntil = Date.now() + 600; } catch (e) {}
@@ -585,17 +785,17 @@ function showHighscoresUI() {
     try {
         let arr = (typeof getTopHighscores === 'function') ? (getTopHighscores(10, false) || []) : [];
         list.innerHTML = '';
-        // Defensive sort here to ensure ranking rule applies even if storage didn’t pre-sort
+      
         const data = Array.isArray(arr) ? arr.slice() : [];
         data.sort((a,b) => {
             const as = (a && (a.score ?? a.finalScore)) || 0; const bs = (b && (b.score ?? b.finalScore)) || 0;
             const at = Math.max(0, Math.round(((a && a.timeMs) || 0) / 1000));
             const bt = Math.max(0, Math.round(((b && b.timeMs) || 0) / 1000));
-            // effective score = score - 10 points per second (faster => higher effective)
+          
             const ae = as - at * 10;
             const be = bs - bt * 10;
             if (be !== ae) return be - ae;
-            // absolute tie: prefer truly faster time
+          
             return (a.timeMs || 0) - (b.timeMs || 0);
         });
         if (!data.length) {
@@ -645,45 +845,126 @@ function hideHighscoresUI() {
 
     /** Create Touch Controls overlay if missing. */
     let _touchButtons = null;
+    /**
+     * Create touch button element.
+     * @param {string} label
+     * @param {number} x
+     * @param {number} y
+     * @returns {HTMLButtonElement}
+     */
+    function createTouchButton(label, x, y) {
+        const b = document.createElement('button');
+        b.innerText = label;
+        b.style.position = 'absolute';
+        b.style.left = x + 'px';
+        b.style.top = y + 'px';
+        b.style.opacity = '0.75';
+        b.style.borderRadius = '50%';
+        b.style.width = '60px';
+        b.style.height = '60px';
+        b.style.border = '1px solid rgba(255,255,255,0.2)';
+        b.style.background = 'rgba(0,0,0,0.35)';
+        b.style.color = 'white';
+        b.style.touchAction = 'none';
+        return b;
+    }
+
+    /**
+     * Attach press handlers to touch button.
+     * @param {HTMLButtonElement} btn
+     * @param {Function} on
+     * @param {Function} off
+     */
+    function attachTouchPress(btn, on, off) {
+        const down = (e) => { e.preventDefault(); on(); };
+        const up = (e) => { e.preventDefault(); off(); };
+        btn.addEventListener('contextmenu', (e) => e.preventDefault());
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); });
+        btn.addEventListener('touchend', (e) => { e.preventDefault(); });
+        btn.addEventListener('gesturestart', (e) => { try { e.preventDefault(); } catch (_) {} });
+        btn.addEventListener('gesturechange', (e) => { try { e.preventDefault(); } catch (_) {} });
+        btn.addEventListener('gestureend', (e) => { try { e.preventDefault(); } catch (_) {} });
+        btn.addEventListener('pointerdown', down);
+        btn.addEventListener('pointerup', up);
+        btn.addEventListener('pointerleave', up);
+        btn.addEventListener('pointercancel', up);
+    }
+
+    /**
+     * Create dpad buttons.
+     * @returns {{bUp: HTMLButtonElement, bDown: HTMLButtonElement, bLeft: HTMLButtonElement, bRight: HTMLButtonElement, pad: HTMLDivElement}}
+     */
+    function createDpadButtons() {
+        const pad = document.createElement('div');
+        pad.style.position = 'absolute';
+        pad.style.left = '16px';
+        pad.style.bottom = '16px';
+        pad.style.width = '180px';
+        pad.style.height = '180px';
+        pad.style.pointerEvents = 'auto';
+        const bUp = createTouchButton('↑', 60, 0);
+        const bDown = createTouchButton('↓', 60, 120);
+        const bLeft = createTouchButton('←', 0, 60);
+        const bRight = createTouchButton('→', 120, 60);
+        pad.appendChild(bUp); pad.appendChild(bDown); pad.appendChild(bLeft); pad.appendChild(bRight);
+        return { bUp, bDown, bLeft, bRight, pad };
+    }
+
+    /**
+     * Create action buttons.
+     * @returns {{bBubble: HTMLButtonElement, act: HTMLDivElement}}
+     */
+    function createActionButtons() {
+        const act = document.createElement('div');
+        act.style.position = 'absolute';
+        act.style.right = '16px';
+        act.style.bottom = '16px';
+        act.style.width = '200px';
+        act.style.height = '120px';
+        act.style.pointerEvents = 'auto';
+        const bBubble = createTouchButton('Bubble', 60, 0);
+        bBubble.style.borderRadius = '12px';
+        bBubble.style.width = '100px';
+        bBubble.style.height = '60px';
+        act.appendChild(bBubble);
+        return { bBubble, act };
+    }
+
+    /**
+     * Wire up dpad and action button inputs.
+     * @param {Object} dpad
+     * @param {Object} actions
+     */
+    function wireTouchButtons(dpad, actions) {
+        attachTouchPress(dpad.bUp, () => window.input.up = true, () => window.input.up = false);
+        attachTouchPress(dpad.bDown, () => window.input.down = true, () => window.input.down = false);
+        attachTouchPress(dpad.bLeft, () => window.input.left = true, () => window.input.left = false);
+        attachTouchPress(dpad.bRight, () => window.input.right = true, () => window.input.right = false);
+        attachTouchPress(actions.bBubble, () => { try { if (world && world.character) world.character.shootBubble(); } catch (e) {} }, () => {});
+    }
+
     function ensureTouchOverlay() {
         if (document.getElementById('touchOverlay')) return;
-        const ov = document.createElement('div'); ov.id = 'touchOverlay';
-        ov.style.position = 'fixed'; ov.style.left = '0'; ov.style.top = '0'; ov.style.width = '100%'; ov.style.height = '100%';
-    ov.style.pointerEvents = 'none'; ov.style.display = 'none'; ov.style.zIndex = '9000';
-    ov.style.webkitTouchCallout = 'none';
-    ov.style.webkitUserSelect = 'none';
-    ov.style.userSelect = 'none';
-        const pad = document.createElement('div'); pad.style.position = 'absolute'; pad.style.left = '16px'; pad.style.bottom = '16px'; pad.style.width = '180px'; pad.style.height = '180px'; pad.style.pointerEvents = 'auto';
-        const mkBtn = (label, x, y) => { const b = document.createElement('button'); b.innerText = label; b.style.position = 'absolute'; b.style.left = x + 'px'; b.style.top = y + 'px'; b.style.opacity = '0.75'; b.style.borderRadius = '50%'; b.style.width = '60px'; b.style.height = '60px'; b.style.border = '1px solid rgba(255,255,255,0.2)'; b.style.background = 'rgba(0,0,0,0.35)'; b.style.color='white'; b.style.touchAction='none'; return b; };
-        const bUp = mkBtn('↑', 60, 0), bDown = mkBtn('↓', 60, 120), bLeft = mkBtn('←', 0, 60), bRight = mkBtn('→', 120, 60);
-        pad.appendChild(bUp); pad.appendChild(bDown); pad.appendChild(bLeft); pad.appendChild(bRight);
-        const act = document.createElement('div'); act.style.position='absolute'; act.style.right='16px'; act.style.bottom='16px'; act.style.width='200px'; act.style.height='120px'; act.style.pointerEvents='auto';
-        const bBubble = mkBtn('Bubble', 60, 0); bBubble.style.borderRadius='12px'; bBubble.style.width='100px'; bBubble.style.height='60px';
-        act.appendChild(bBubble);
-        ov.appendChild(pad); ov.appendChild(act); document.body.appendChild(ov);
-
-        const press = (btn, on, off) => {
-            const down = (e) => { e.preventDefault(); on(); };
-            const up = (e) => { e.preventDefault(); off(); };
-            // Prevent iOS long-press context/callout and text selection
-            btn.addEventListener('contextmenu', (e) => e.preventDefault());
-            btn.addEventListener('touchstart', (e) => { e.preventDefault(); });
-            btn.addEventListener('touchend', (e) => { e.preventDefault(); });
-            btn.addEventListener('gesturestart', (e) => { try { e.preventDefault(); } catch(_){} });
-            btn.addEventListener('gesturechange', (e) => { try { e.preventDefault(); } catch(_){} });
-            btn.addEventListener('gestureend', (e) => { try { e.preventDefault(); } catch(_){} });
-            btn.addEventListener('pointerdown', down);
-            btn.addEventListener('pointerup', up);
-            btn.addEventListener('pointerleave', up);
-            btn.addEventListener('pointercancel', up);
-        };
-        press(bUp, () => window.input.up = true, () => window.input.up = false);
-        press(bDown, () => window.input.down = true, () => window.input.down = false);
-        press(bLeft, () => window.input.left = true, () => window.input.left = false);
-        press(bRight, () => window.input.right = true, () => window.input.right = false);
-        press(bBubble, () => { try { if (world && world.character) world.character.shootBubble(); } catch(e){} }, () => {});
-
-        _touchButtons = { pad, act };
+        const ov = document.createElement('div');
+        ov.id = 'touchOverlay';
+        ov.style.position = 'fixed';
+        ov.style.left = '0';
+        ov.style.top = '0';
+        ov.style.width = '100%';
+        ov.style.height = '100%';
+        ov.style.pointerEvents = 'none';
+        ov.style.display = 'none';
+        ov.style.zIndex = '9000';
+        ov.style.webkitTouchCallout = 'none';
+        ov.style.webkitUserSelect = 'none';
+        ov.style.userSelect = 'none';
+        const dpad = createDpadButtons();
+        const actions = createActionButtons();
+        ov.appendChild(dpad.pad);
+        ov.appendChild(actions.act);
+        document.body.appendChild(ov);
+        wireTouchButtons(dpad, actions);
+        _touchButtons = { pad: dpad.pad, act: actions.act };
     }
     /** Touch full-screen and orientation handling state. */
     let _noScrollActive = false;
@@ -789,43 +1070,213 @@ function hideHighscoresUI() {
     }
 
     /**
+     * Enable touch overlay mode.
+     */
+    async function enableTouchMode() {
+        setNoScroll(true);
+        saveCanvasStyle();
+        if (isLandscape()) {
+            hideRotateOverlay();
+            await enterFullscreen();
+            resizeCanvasToViewport();
+            attachTouchModeListeners();
+        } else {
+            showRotateOverlay();
+            attachTouchModeListeners();
+        }
+    }
+
+    /**
+     * Disable touch overlay mode.
+     */
+    async function disableTouchMode() {
+        hideRotateOverlay();
+        detachTouchModeListeners();
+        await exitFullscreen();
+        setNoScroll(false);
+        restoreCanvasStyle();
+        try {
+            if (canvas) {
+                canvas.width = 720; canvas.height = 480;
+                canvas.style.width = '720px';
+                canvas.style.height = '480px';
+            }
+        } catch (e) {}
+    }
+
+    /**
      * Toggle the touch overlay, fullscreen behavior and orientation enforcement.
      * @param {boolean} on
      */
     async function setTouchOverlayOn(on) {
         window.__touchOverlayOn = !!on;
-    try { const t = document.getElementById('touchToggle'); if (t) t.checked = !!on; } catch (e) {}
+        try { const t = document.getElementById('touchToggle'); if (t) t.checked = !!on; } catch (e) {}
         ensureRotateOverlay();
         const ov = document.getElementById('touchOverlay');
         if (ov) ov.style.display = on ? 'block' : 'none';
         if (on) {
-            setNoScroll(true);
-            saveCanvasStyle();
-            if (isLandscape()) {
-                hideRotateOverlay();
-                await enterFullscreen();
-                resizeCanvasToViewport();
-                attachTouchModeListeners();
-            } else {
-                showRotateOverlay();
-                attachTouchModeListeners();
-            }
+            await enableTouchMode();
         } else {
-            hideRotateOverlay();
-            detachTouchModeListeners();
-            await exitFullscreen();
-            setNoScroll(false);
-            restoreCanvasStyle();
-            try {
-                if (canvas) {
-                    canvas.width = 720; canvas.height = 480;
-                    canvas.style.width = '720px';
-                    canvas.style.height = '480px';
-                }
-            } catch (e) {}
+            await disableTouchMode();
         }
     }
+    
+    /**
+     * Detect if device is a mobile device (smartphone/tablet).
+     * @returns {boolean}
+     */
+    function detectMobileDevice() {
+        try {
+            const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+            const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+            const smallScreen = (vw <= 768 && vh <= 1024) || (vh <= 768 && vw <= 1024);
+            
+            const ua = navigator.userAgent || '';
+            const mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile/i.test(ua);
+            
+            const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+            
+            return smallScreen && (mobileUA || hasTouch);
+        } catch (e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Handle portrait orientation on mobile.
+     */
+    function handlePortraitMode() {
+        showMobileRotatePrompt();
+        if (typeof window.setTouchOverlayOn === 'function') {
+            window.setTouchOverlayOn(false);
+        }
+    }
+
+    /**
+     * Handle landscape orientation on mobile.
+     */
+    function handleLandscapeMode() {
+        hideMobileRotatePrompt();
+        if (!window.__userAutoDisabled && typeof window.__userForcedTouch === 'undefined') {
+            const touchToggle = document.getElementById('touchToggle');
+            if (touchToggle) touchToggle.checked = true;
+            if (typeof window.setTouchOverlayOn === 'function') {
+                window.setTouchOverlayOn(true);
+            }
+        }
+    }
+
+    /**
+     * Handle mobile orientation: show rotate prompt in portrait, enable touch mode in landscape.
+     */
+    function handleMobileOrientation() {
+        try {
+            if (!window.__isMobileDevice) return;
+            const isPortrait = !isLandscape();
+            if (isPortrait) {
+                handlePortraitMode();
+            } else {
+                handleLandscapeMode();
+            }
+        } catch (e) {}
+    }
+    
+    /**
+     * Create rotate icon SVG.
+     * @returns {HTMLDivElement}
+     */
+    function createRotateIcon() {
+        const icon = document.createElement('div');
+        icon.innerHTML = `
+            <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+                <path d="M12 18h.01"/>
+            </svg>
+        `;
+        icon.style.cssText = `
+            animation: rotateDevice 2s infinite;
+            margin-bottom: 20px;
+        `;
+        return icon;
+    }
+
+    /**
+     * Create rotate prompt text.
+     * @returns {HTMLDivElement}
+     */
+    function createRotateText() {
+        const text = document.createElement('div');
+        text.innerHTML = '<h2 style="margin: 0 0 10px; font-size: 24px;">Bitte drehe dein Gerät</h2><p style="margin: 0; font-size: 16px; opacity: 0.8;">Für das beste Spielerlebnis nutze bitte den Querformat-Modus</p>';
+        return text;
+    }
+
+    /**
+     * Inject rotate animation CSS.
+     */
+    function injectRotateAnimation() {
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes rotateDevice {
+                0%, 100% { transform: rotate(0deg); }
+                50% { transform: rotate(90deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Ensure mobile rotate prompt overlay exists.
+     */
+    function ensureMobileRotatePrompt() {
+        if (document.getElementById('mobileRotatePrompt')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'mobileRotatePrompt';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+        `;
+        const content = document.createElement('div');
+        content.style.cssText = `
+            text-align: center;
+            color: white;
+            font-family: Arial, sans-serif;
+        `;
+        const icon = createRotateIcon();
+        const text = createRotateText();
+        content.appendChild(icon);
+        content.appendChild(text);
+        overlay.appendChild(content);
+        injectRotateAnimation();
+        document.body.appendChild(overlay);
+    }
+    
+    /**
+     * Show mobile rotate prompt overlay.
+     */
+    function showMobileRotatePrompt() {
+        const overlay = document.getElementById('mobileRotatePrompt');
+        if (overlay) overlay.style.display = 'flex';
+    }
+    
+    /**
+     * Hide mobile rotate prompt overlay.
+     */
+    function hideMobileRotatePrompt() {
+        const overlay = document.getElementById('mobileRotatePrompt');
+        if (overlay) overlay.style.display = 'none';
+    }
+    
     window.setTouchOverlayOn = setTouchOverlayOn;
-    // initialize state
     window.__touchOverlayOn = false;
     setTouchOverlayOn(false);
