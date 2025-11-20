@@ -1,4 +1,18 @@
+/**
+ * Puffer fish enemy with horizontal swimming.
+ * @extends Enemy
+ */
 class PufferFish extends Enemy {
+    /**
+     * Create a puffer fish enemy.
+     * @param {number} x - X position
+     * @param {number} y - Y position
+     * @param {number} width - Width
+     * @param {number} height - Height
+     * @param {number} speed - Movement speed
+     * @param {number|null} score - Score value
+     * @param {number|null} speedFactor - Speed multiplier
+     */
     constructor(x, y, width = 80, height = 60, speed = 1, score = null, speedFactor = null) {
         super(x, y, width, height, speed, score);
         if (typeof speedFactor === 'number') this.speedFactor = speedFactor;
@@ -27,6 +41,10 @@ class PufferFish extends Enemy {
         } catch (e) {}
     }
 
+    /**
+     * Update puffer fish position.
+     * @param {number} dt - Delta time in milliseconds
+     */
     update(dt) {
         try {
             this._moveHorizontally(dt);

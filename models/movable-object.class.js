@@ -6,8 +6,11 @@ class MovableObject {
     x = 50;
     z = 0;
 
-    
-  
+    /**
+     * Load a single image for this object.
+     * @param {string} path - Path to the image file
+     * @returns {Promise} Promise that resolves when image is loaded
+     */
     loadImage(path) {
         const img = new Image();
         try { this._firstFramePath = path; this.img = img; } catch (e) {}
@@ -43,7 +46,11 @@ class MovableObject {
         } catch (e) {}
     }
 
-  
+    /**
+     * Compute the visible (non-transparent) bounding box of an image.
+     * @param {Image} img - Image to analyze
+     * @returns {Object} Trim data {sx, sy, sw, sh}
+     */
     static computeTrim(img) {
         if (!img || !(img instanceof Image) || !img.complete) return { sx: 0, sy: 0, sw: img.naturalWidth || 0, sh: img.naturalHeight || 0 };
         if (img._trim) return img._trim;
@@ -83,7 +90,11 @@ class MovableObject {
         return img._trim;
     }
 
-  
+    /**
+     * Calculate object size based on score value.
+     * @param {number} score - Score value
+     * @returns {Object} Size {height, width}
+     */
     static sizeFromScore(score) {
         const minScore = 1000, maxScore = 100000;
         const minH = 25, maxH = 250;
@@ -94,7 +105,12 @@ class MovableObject {
         return { height: h, width: w };
     }
 
-  
+    /**
+     * Load multiple image frames for animation.
+     * @param {Array<string>} paths - Array of image paths
+     * @param {number} frameInterval - Milliseconds between frames
+     * @returns {Promise} Promise resolving to this object
+     */
     loadFrames(paths = [], frameInterval = 100) {
         this._initializeFrameData(paths, frameInterval);
         const loaders = this._createFrameLoaders(paths);
@@ -173,7 +189,14 @@ class MovableObject {
         }
     }
 
-  
+    /**
+     * Load frames using a pattern (e.g., {i}.png) or from manifest.
+     * @param {string} base - Base path for frames
+     * @param {Array<string>} patternList - Patterns with {i} placeholder
+     * @param {number} maxTries - Maximum frame indices to try
+     * @param {number} frameInterval - Milliseconds between frames
+     * @returns {Promise} Promise resolving to this object
+     */
     loadFramesPattern(base, patternList = ['{i}.png'], maxTries = 12, frameInterval = 100) {
         if (this._tryLoadFromManifest(base, frameInterval)) {
             return this._tryLoadFromManifest(base, frameInterval);
@@ -297,7 +320,10 @@ class MovableObject {
         this._lastFrameTick = Date.now();
     }
 
-  
+    /**
+     * Draw this object to the canvas context.
+     * @param {CanvasRenderingContext2D} ctx - Canvas rendering context
+     */
     drawTo(ctx) {
         if (this.frames && this.frames.length > 1) {
             this._updateFrameAnimation();
@@ -514,7 +540,10 @@ class MovableObject {
         return { dx: this.x + offsetX, dy: this.y + offsetY, dw, dh };
     }
 
-  
+    /**
+     * Get circular hitbox for collision detection.
+     * @returns {Object} Hitbox {cx, cy, r, x, y, width, height}
+     */
     getHitBox() {
         const { dx, dy, dw, dh } = this._getDrawDimensions();
         const cx = Math.round(dx + dw / 2);
@@ -553,10 +582,16 @@ class MovableObject {
         return { dx: this.x + offsetX, dy: this.y + offsetY, dw, dh };
     }
 
+    /**
+     * Move object to the right (placeholder method).
+     */
     moveRight() {
 
     }
 
+    /**
+     * Move object to the left (placeholder method).
+     */
     moveLeft() {
 
     }

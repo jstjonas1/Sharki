@@ -1,4 +1,18 @@
+/**
+ * Jellyfish enemy with vertical bobbing motion.
+ * @extends Enemy
+ */
 class JellyFish extends Enemy {
+    /**
+     * Create a jellyfish enemy.
+     * @param {number} x - X position
+     * @param {number} y - Y position
+     * @param {number} width - Width
+     * @param {number} height - Height
+     * @param {number} speed - Movement speed
+     * @param {number|null} score - Score value
+     * @param {number|null} speedFactor - Speed multiplier
+     */
     constructor(x, y, width = 60, height = 80, speed = 1, score = null, speedFactor = null) {
         super(x, y, width, height, speed, score);
         if (typeof speedFactor === 'number') this.speedFactor = speedFactor;
@@ -41,6 +55,10 @@ class JellyFish extends Enemy {
         } catch (e) {}
     }
 
+    /**
+     * Update jellyfish position and animation.
+     * @param {number} dt - Delta time in milliseconds
+     */
     update(dt) {
         try {
             this._moveHorizontally(dt);

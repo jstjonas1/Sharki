@@ -1,4 +1,13 @@
+/**
+ * Background layer with light/dark mode support.
+ * @extends MovableObject
+ */
 class BackgroundObject extends MovableObject {
+    /**
+     * Create a background object.
+     * @param {string} lightPath - Path to light mode image
+     * @param {string|null} darkPath - Path to dark mode image
+     */
     constructor(lightPath, darkPath = null) {
         super();
         this.lightPath = lightPath;
@@ -12,6 +21,10 @@ class BackgroundObject extends MovableObject {
         if (this.lightPath) this.loadImage(this.lightPath).catch(() => {});
     }
 
+    /**
+     * Switch between light and dark mode background.
+     * @param {boolean} isDark - True for dark mode, false for light mode
+     */
     setDarkMode(isDark) {
         this.isDark = !!isDark;
         const path = this.isDark && this.darkPath ? this.darkPath : this.lightPath;
@@ -27,7 +40,10 @@ class BackgroundObject extends MovableObject {
         }
     }
 
-  
+    /**
+     * Draw background to canvas.
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
     drawTo(ctx) {
         try {
             if (this.img instanceof Image && this.img.complete) {

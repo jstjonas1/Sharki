@@ -122,14 +122,19 @@ class Enemy extends MovableObject {
         }
     }
 
-  
+    /**
+     * Apply size based on score value.
+     */
     applySizeFromScore() {
     const s = MovableObject.sizeFromScore(this.score);
     this.height = s.height;
     this.width = s.width;
     }
 
-  
+    /**
+     * Draw enemy to canvas context.
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
     drawTo(ctx) {
       
         try {

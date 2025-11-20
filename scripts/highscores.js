@@ -3,6 +3,10 @@
  * Exposes: loadHighscores, saveHighscores, saveHighscoreRecord, getTopHighscores
  */
 (function () {
+    /**
+     * Load highscores from localStorage.
+     * @returns {Array} Array of highscore records
+     */
     function loadHighscores() {
         try {
             const raw = localStorage.getItem('sharkyHighscores');
@@ -13,10 +17,18 @@
         } catch (e) { return []; }
     }
 
+    /**
+     * Save highscores to localStorage.
+     * @param {Array} list - Array of highscore records
+     */
     function saveHighscores(list) {
         try { localStorage.setItem('sharkyHighscores', JSON.stringify(list || [])); } catch (e) {}
     }
 
+    /**
+     * Save a new highscore record.
+     * @param {Object} rec - Highscore record
+     */
     function saveHighscoreRecord(rec) {
         try {
           
@@ -68,16 +80,12 @@
         } catch (e) { return []; }
     }
 
-  
-  
-  
-  
     /**
      * Calculate final score based on difficulty and time.
-     * @param {string} difficulty 
-     * @param {number} baseScore 
-     * @param {number} timeMs 
-     * @returns {number}
+     * @param {string} difficulty - Difficulty level
+     * @param {number} baseScore - Base score
+     * @param {number} timeMs - Time in milliseconds
+     * @returns {number} Final calculated score
      */
     function calculateFinalScore(difficulty, baseScore, timeMs) {
         try {
@@ -95,8 +103,12 @@
         } catch (e) { return Math.round(baseScore || 0); }
     }
 
-  
-  
+    /**
+     * Get top N highscores, optionally including easy mode.
+     * @param {number} n - Number of scores to return
+     * @param {boolean} includeEasy - Whether to include easy mode scores
+     * @returns {Array} Top highscores
+     */
     function getTopHighscores(n, includeEasy) {
         try {
             const list = loadHighscores() || [];
