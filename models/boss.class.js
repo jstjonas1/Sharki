@@ -57,19 +57,39 @@ class Boss extends Enemy {
      * @param {number} dt - Delta time
      */
     _chasePlayer(target, dt) {
+        const direction = this._calculateChaseDirection(target);
+        const baseSpeed = 80 * (this.speed || 1);
+        this._applyChaseMovement(direction, baseSpeed, dt);
+    }
+
+    /**
+     * Calculate normalized direction vector to target.
+     * @param {Object} target - Target {cx, cy}
+     * @returns {Object} {nx, ny}
+     * @private
+     */
+    _calculateChaseDirection(target) {
         const mycx = this.x + (this.width || 0) / 2;
         const mycy = this.y + (this.height || 0) / 2;
         const dx = target.cx - mycx;
         const dy = target.cy - mycy;
         const dist = Math.hypot(dx, dy) || 1;
-        const nx = dx / dist;
-        const ny = dy / dist;
-        this.vx = nx;
-        this.vy = ny;
-        const baseSpeed = 80 * (this.speed || 1);
-        this.x += nx * baseSpeed * (dt / 1000);
-        this.y += ny * baseSpeed * (dt / 1000);
-        this._currentSpeed = Math.hypot(nx * baseSpeed, ny * baseSpeed);
+        return { nx: dx / dist, ny: dy / dist };
+    }
+
+    /**
+     * Apply chase movement with direction and speed.
+     * @param {Object} direction - {nx, ny}
+     * @param {number} baseSpeed - Base speed value
+     * @param {number} dt - Delta time
+     * @private
+     */
+    _applyChaseMovement(direction, baseSpeed, dt) {
+        this.vx = direction.nx;
+        this.vy = direction.ny;
+        this.x += direction.nx * baseSpeed * (dt / 1000);
+        this.y += direction.ny * baseSpeed * (dt / 1000);
+        this._currentSpeed = Math.hypot(direction.nx * baseSpeed, direction.ny * baseSpeed);
     }
 
     /**

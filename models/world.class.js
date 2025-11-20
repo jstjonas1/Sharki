@@ -67,26 +67,28 @@ class World {
    * @returns {string} dark path
    */
   _deriveDarkPath(lp) {
-    let dp = null;
     try {
-      if (lp.indexOf('/layers/') !== -1) {
-        const parts = lp.split('/');
-        const fname = parts.pop();
-        const folder = parts.join('/');
-        if (folder.endsWith('/1light')) {
-          dp = lp.replace('/layers/1light/', '/dark/');
-        } else if (/^l/.test(fname)) {
-          dp = folder + '/' + fname.replace(/^l/, 'd');
-        } else {
-          dp = folder + '/d.png';
-        }
-      } else if (lp.indexOf('/1light/') !== -1) {
-        dp = lp.replace('/1light/', '/dark/');
-      } else {
-        dp = lp.replace(/\/(l)([^\/]*)$/, '/d$2');
-      }
-    } catch (err) { dp = lp; }
-    return dp;
+      if (lp.indexOf('/layers/') !== -1) return this._deriveDarkPathLayers(lp);
+      if (lp.indexOf('/1light/') !== -1) return lp.replace('/1light/', '/dark/');
+      return lp.replace(/\/(l)([^\/]*)$/, '/d$2');
+    } catch (err) {
+      return lp;
+    }
+  }
+
+  /**
+   * Derive dark path for layers structure.
+   * @param {string} lp - light path
+   * @returns {string} dark path
+   * @private
+   */
+  _deriveDarkPathLayers(lp) {
+    const parts = lp.split('/');
+    const fname = parts.pop();
+    const folder = parts.join('/');
+    if (folder.endsWith('/1light')) return lp.replace('/layers/1light/', '/dark/');
+    if (/^l/.test(fname)) return folder + '/' + fname.replace(/^l/, 'd');
+    return folder + '/d.png';
   }
 
   /**
@@ -142,21 +144,52 @@ class World {
 
   constructor(canvas, options = {}) {
     this.canvas = canvas;
-    try { this.ctx = canvas.getContext('2d'); } catch (e) { this.ctx = null; }
+    this._initializeCanvas();
+    this._initializeState(options);
+    this._initializeCharacter();
+    this._initializeHandlers();
+    if (this._autoStart) this.start();
+  }
+
+  /**
+   * Initialize canvas context.
+   * @private
+   */
+  _initializeCanvas() {
+    try { this.ctx = this.canvas.getContext('2d'); } catch (e) { this.ctx = null; }
     this._lastTick = Date.now();
+  }
+
+  /**
+   * Initialize world state.
+   * @param {Object} options - World options
+   * @private
+   */
+  _initializeState(options) {
     this.running = false;
     this._autoStart = !!(options.autoStart !== undefined ? options.autoStart : true);
-    this.character = new Character();
-    this._initBackgrounds();
     this._initialRampStart = Date.now();
     this._initialRampDuration = 10000;
     this._initialRampTarget = 15;
+  }
+
+  /**
+   * Initialize character and backgrounds.
+   * @private
+   */
+  _initializeCharacter() {
+    this.character = new Character();
+    this._initBackgrounds();
+    this._positionCharacter();
+  }
+
+  /**
+   * Initialize event handlers.
+   * @private
+   */
+  _initializeHandlers() {
     this._setupKeyboardHandler();
     this._setupCanvasPointer();
-    this._positionCharacter();
-    if (this._autoStart) {
-      this.start();
-    }
   }
 
   /**
@@ -322,22 +355,41 @@ class World {
     const hc = this.character.getHitBox ? this.character.getHitBox() : { x: this.character.x, y: this.character.y, width: this.character.width, height: this.character.height };
     const he = e.getHitBox ? e.getHitBox() : { x: e.x, y: e.y, width: e.width, height: e.height };
     const touch = this._checkCollision(hc, he);
-    if (touch) {
-      if (e instanceof Boss) {
-        this.triggerGameOver();
-      } else {
-        const enemyScore = (e.score || 0);
-        let playerEffective = this.score;
-        try {
-          if ((this.difficulty || 'normal').toString().toLowerCase() === 'easy') playerEffective = Math.round(this.score * 1.25);
-        } catch (_) {}
-        if (playerEffective >= enemyScore) {
-          this._handleEatEnemy(e);
-        } else {
-          this.triggerGameOver();
-        }
-      }
+    if (!touch) return;
+    if (e instanceof Boss) {
+      this.triggerGameOver();
+    } else {
+      this._handleNormalEnemyCollision(e);
     }
+  }
+
+  /**
+   * Handle collision with normal (non-boss) enemy.
+   * @param {Object} e - Enemy
+   * @private
+   */
+  _handleNormalEnemyCollision(e) {
+    const enemyScore = (e.score || 0);
+    const playerEffective = this._getEffectivePlayerScore();
+    if (playerEffective >= enemyScore) {
+      this._handleEatEnemy(e);
+    } else {
+      this.triggerGameOver();
+    }
+  }
+
+  /**
+   * Get effective player score (adjusted for difficulty).
+   * @returns {number} Effective score
+   * @private
+   */
+  _getEffectivePlayerScore() {
+    try {
+      if ((this.difficulty || 'normal').toString().toLowerCase() === 'easy') {
+        return Math.round(this.score * 1.25);
+      }
+    } catch (_) {}
+    return this.score;
   }
 
   /**
@@ -611,10 +663,24 @@ class World {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     const cx = this.canvas.width / 2; const cy = this.canvas.height / 2 - 40;
     const baseW = 140; const baseH = 140;
-    let pulse = 1; try { const t = Date.now() - (this._victoryStart || Date.now()); pulse = 1 + 0.08 * Math.sin(t / 200); } catch (e) {}
+    const pulse = this._calculateVictoryPulse();
     this._drawVictoryCharacter(ctx, cx, cy, baseW, baseH, pulse);
     this._drawVictoryText(ctx, cx, cy, baseW, baseH);
     ctx.restore();
+  }
+
+  /**
+   * Calculate pulsing scale for victory animation.
+   * @returns {number} Pulse scale
+   * @private
+   */
+  _calculateVictoryPulse() {
+    try {
+      const t = Date.now() - (this._victoryStart || Date.now());
+      return 1 + 0.08 * Math.sin(t / 200);
+    } catch (e) {
+      return 1;
+    }
   }
 
   /**
@@ -659,14 +725,28 @@ class World {
     try {
       const hudX = 12; const hudY = 12;
       const ctx2 = this.ctx;
-      let totalSec = 0; try { totalSec = Math.max(0, Math.round((this.elapsedMs || 0) / 1000)); } catch (e) { totalSec = 0; }
-      const mins = Math.floor(totalSec / 60); const secs = totalSec % 60;
-      const timeStr = `${mins}:${secs.toString().padStart(2,'0')}`;
+      const timeStr = this._formatElapsedTime();
       const boxW = 340; const boxH = 72;
       this._drawHUDBackground(ctx2, hudX, hudY, boxW, boxH);
       this._drawHUDStats(ctx2, hudX, hudY, timeStr);
       this._drawHUDProgressBar(ctx2, hudX, hudY, boxW);
     } catch (e) {}
+  }
+
+  /**
+   * Format elapsed time as MM:SS.
+   * @returns {string} Formatted time string
+   * @private
+   */
+  _formatElapsedTime() {
+    try {
+      const totalSec = Math.max(0, Math.round((this.elapsedMs || 0) / 1000));
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      return `${mins}:${secs.toString().padStart(2,'0')}`;
+    } catch (e) {
+      return '0:00';
+    }
   }
 
   /**
@@ -707,18 +787,27 @@ class World {
    */
   _drawHUDProgressBar(ctx, hudX, hudY, boxW) {
     try {
-      const minScore = 2000;
-      const maxScore = (this.difficulty === 'infinity') ? (this.bossTriggerScore || 999999) : 120000;
-      const raw = (typeof this.score === 'number') ? this.score : (this.score || 0);
-      let pct = 0;
-      if (raw <= minScore) pct = 0; else if (raw >= maxScore) pct = 1; else pct = (raw - minScore) / (maxScore - minScore);
-      pct = Math.max(0, Math.min(1, pct));
+      const pct = this._calculateProgressPercentage();
       const barX = hudX; const barY = hudY + 44; const barW = boxW - 24; const barH = 10;
       this._renderProgressBarBackground(ctx, barX, barY, barW, barH);
       this._renderProgressBarFill(ctx, barX, barY, barW, barH, pct);
       this._renderProgressBarLabel(ctx, barX, barY, barW, barH, pct);
       ctx.restore();
     } catch (e) {}
+  }
+
+  /**
+   * Calculate progress percentage from score.
+   * @returns {number} Progress percentage (0-1)
+   * @private
+   */
+  _calculateProgressPercentage() {
+    const minScore = 2000;
+    const maxScore = (this.difficulty === 'infinity') ? (this.bossTriggerScore || 999999) : 120000;
+    const raw = (typeof this.score === 'number') ? this.score : (this.score || 0);
+    let pct = 0;
+    if (raw <= minScore) pct = 0; else if (raw >= maxScore) pct = 1; else pct = (raw - minScore) / (maxScore - minScore);
+    return Math.max(0, Math.min(1, pct));
   }
 
   /**
@@ -942,16 +1031,35 @@ class World {
    * @returns {Object} Enemy instance
    */
   _createEnemy(type, makeEdible, charScoreEquivalent) {
-    const fromRight = Math.random() < 0.5;
-    const y = Math.random() * (this.canvas.height - 60);
+    const enemy = this._instantiateEnemy(type);
     const scoreVal = this._calculateEnemyScore(makeEdible, charScoreEquivalent);
-    const enemy = (type === 'puffer') ? new PufferFish() : new JellyFish();
+    this._configureEnemy(enemy, scoreVal);
+    return enemy;
+  }
+
+  /**
+   * Instantiate enemy of specified type.
+   * @param {string} type - 'puffer' or 'jelly'
+   * @returns {Object} Enemy instance
+   * @private
+   */
+  _instantiateEnemy(type) {
+    return (type === 'puffer') ? new PufferFish() : new JellyFish();
+  }
+
+  /**
+   * Configure enemy with score, position, and speed.
+   * @param {Object} enemy - Enemy instance
+   * @param {number} scoreVal - Score value
+   * @private
+   */
+  _configureEnemy(enemy, scoreVal) {
     try { enemy.speedFactor = this.getUniqueEnemySpeed(); } catch (e) {}
     enemy.score = scoreVal;
     enemy.applySizeFromScore && enemy.applySizeFromScore();
-    enemy.y = y;
+    enemy.y = Math.random() * (this.canvas.height - 60);
+    const fromRight = Math.random() < 0.5;
     this._positionEnemy(enemy, fromRight);
-    return enemy;
   }
 
   /**
@@ -990,20 +1098,59 @@ class World {
   _drawTopRightUi(ctx) {
     if (!ctx) return;
     const hasTouchCapability = this._hasTouchCapability();
-    const pad = 10; const btnH = 30; const pauseW = 70; const gap = 10; const sliderW = 90;
-    const x2 = this.canvas.width - pad; const y = pad;
-    let px, py;
+    const {pad, btnH, pauseW, gap, sliderW, x2, y} = this._getTopRightUiLayout();
     if (hasTouchCapability) {
-      px = x2 - pauseW; py = y;
-      const sx = px - gap - sliderW; const sy = y;
-      this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
-      this._uiRects.touch = { x: sx, y: sy, w: sliderW, h: btnH };
-      this._drawTouchToggle(ctx, sx, sy, sliderW, btnH);
+      this._drawTopRightWithTouch(ctx, x2, y, pauseW, sliderW, gap, btnH);
     } else {
-      px = x2 - pauseW; py = y;
-      this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
-      this._uiRects.touch = null;
+      this._drawTopRightPauseOnly(ctx, x2, y, pauseW, btnH);
     }
+  }
+
+  /**
+   * Get layout parameters for top-right UI.
+   * @returns {Object} Layout parameters
+   * @private
+   */
+  _getTopRightUiLayout() {
+    return {
+      pad: 10, btnH: 30, pauseW: 70, gap: 10, sliderW: 90,
+      x2: this.canvas.width - 10, y: 10
+    };
+  }
+
+  /**
+   * Draw top-right UI with touch toggle.
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {number} x2 - Right edge X
+   * @param {number} y - Y position
+   * @param {number} pauseW - Pause button width
+   * @param {number} sliderW - Slider width
+   * @param {number} gap - Gap between buttons
+   * @param {number} btnH - Button height
+   * @private
+   */
+  _drawTopRightWithTouch(ctx, x2, y, pauseW, sliderW, gap, btnH) {
+    const px = x2 - pauseW; const py = y;
+    const sx = px - gap - sliderW; const sy = y;
+    this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
+    this._uiRects.touch = { x: sx, y: sy, w: sliderW, h: btnH };
+    this._drawTouchToggle(ctx, sx, sy, sliderW, btnH);
+    this._drawPauseButton(ctx, px, py, pauseW, btnH);
+  }
+
+  /**
+   * Draw top-right UI with pause only.
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {number} x2 - Right edge X
+   * @param {number} y - Y position
+   * @param {number} pauseW - Pause button width
+   * @param {number} btnH - Button height
+   * @private
+   */
+  _drawTopRightPauseOnly(ctx, x2, y, pauseW, btnH) {
+    const px = x2 - pauseW; const py = y;
+    this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
+    this._uiRects.touch = null;
     this._drawPauseButton(ctx, px, py, pauseW, btnH);
   }
 
@@ -1029,18 +1176,59 @@ class World {
    */
   _drawTouchToggle(ctx, sx, sy, sliderW, btnH) {
     ctx.save();
+    this._drawTouchToggleBackground(ctx, sx, sy, sliderW, btnH);
+    const overlayOn = (typeof window !== 'undefined' && window.__touchOverlayOn) ? true : false;
+    this._drawTouchToggleKnob(ctx, sx, sy, sliderW, btnH, overlayOn);
+    this._drawTouchToggleLabel(ctx, sx, sy, sliderW, btnH, overlayOn);
+    ctx.restore();
+  }
+
+  /**
+   * Draw touch toggle background.
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {number} sx - Slider X
+   * @param {number} sy - Slider Y
+   * @param {number} sliderW - Slider width
+   * @param {number} btnH - Button height
+   * @private
+   */
+  _drawTouchToggleBackground(ctx, sx, sy, sliderW, btnH) {
     World._roundRect(ctx, sx, sy, sliderW, btnH, 6);
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fill();
     ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
-    const overlayOn = (typeof window !== 'undefined' && window.__touchOverlayOn) ? true : false;
+  }
+
+  /**
+   * Draw touch toggle knob.
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {number} sx - Slider X
+   * @param {number} sy - Slider Y
+   * @param {number} sliderW - Slider width
+   * @param {number} btnH - Button height
+   * @param {boolean} overlayOn - Whether overlay is on
+   * @private
+   */
+  _drawTouchToggleKnob(ctx, sx, sy, sliderW, btnH, overlayOn) {
     const knobW = Math.round(sliderW * 0.45); const knobPad = 3;
     const knobX = overlayOn ? (sx + sliderW - knobW - knobPad) : (sx + knobPad);
     const knobY = sy + knobPad; const knobH = btnH - knobPad * 2;
     World._roundRect(ctx, knobX, knobY, knobW, knobH, 6);
     ctx.fillStyle = overlayOn ? '#2ecc71' : '#7f8c8d'; ctx.fill();
+  }
+
+  /**
+   * Draw touch toggle label.
+   * @param {CanvasRenderingContext2D} ctx - Canvas context
+   * @param {number} sx - Slider X
+   * @param {number} sy - Slider Y
+   * @param {number} sliderW - Slider width
+   * @param {number} btnH - Button height
+   * @param {boolean} overlayOn - Whether overlay is on
+   * @private
+   */
+  _drawTouchToggleLabel(ctx, sx, sy, sliderW, btnH, overlayOn) {
     ctx.fillStyle = 'white'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(overlayOn ? 'Touch: ON' : 'Touch: OFF', sx + sliderW / 2, sy + btnH / 2);
-    ctx.restore();
   }
 
   /**
@@ -1068,15 +1256,9 @@ class World {
   _handleCanvasPointer(ev) {
     try {
       if (!this._uiRects || (!this._uiRects.pause && !this._uiRects.touch)) return;
-      const {x, y, hit} = this._getPointerCoordinates(ev);
-      if (hit(this._uiRects.pause)) {
-        this._handlePauseClick(ev);
-        return;
-      }
-      if (hit(this._uiRects.touch)) {
-        this._handleTouchClick(ev);
-        return;
-      }
+      const {hit} = this._getPointerCoordinates(ev);
+      if (hit(this._uiRects.pause)) return this._handlePauseClick(ev);
+      if (hit(this._uiRects.touch)) return this._handleTouchClick(ev);
     } catch (e) {}
   }
 
@@ -1198,16 +1380,51 @@ class World {
     const min = 0.05, max = 1.0, minDelta = 0.08;
     let attempts = 0;
     while (attempts < 60) {
-          const r = Math.random();
-      const val = (r < 0.35) ? (min + Math.random() * (0.25 - min)) : (r > 0.65 ? (0.7 + Math.random() * (max - 0.7)) : (min + Math.random() * (max - min)));
-      const conflict = this.enemies.some(e => (typeof e.speedFactor === 'number') && Math.abs(e.speedFactor - val) < minDelta);
+      const val = this._generateRandomSpeed(min, max);
+      const conflict = this._checkSpeedConflict(val, minDelta);
       if (!conflict) return Math.max(min, Math.min(max, Math.round(val * 100) / 100));
       attempts++;
     }
-      const v = min + Math.random() * (max - min);
-      let out = Math.max(min, Math.min(max, Math.round(v * 100) / 100));
-          try { if ((this.difficulty || 'normal').toString().toLowerCase() === 'easy') out = Math.max(min, Math.min(max, Math.round(out * 0.85 * 100) / 100)); } catch(_){}
-      return out;
+    return this._getFallbackSpeed(min, max);
+  }
+
+  /**
+   * Generate random speed with weighted distribution.
+   * @param {number} min - Minimum speed
+   * @param {number} max - Maximum speed
+   * @returns {number} Random speed value
+   * @private
+   */
+  _generateRandomSpeed(min, max) {
+    const r = Math.random();
+    if (r < 0.35) return min + Math.random() * (0.25 - min);
+    if (r > 0.65) return 0.7 + Math.random() * (max - 0.7);
+    return min + Math.random() * (max - min);
+  }
+
+  /**
+   * Check if speed conflicts with existing enemies.
+   * @param {number} val - Speed value to check
+   * @param {number} minDelta - Minimum allowed difference
+   * @returns {boolean} True if conflict exists
+   * @private
+   */
+  _checkSpeedConflict(val, minDelta) {
+    return this.enemies.some(e => (typeof e.speedFactor === 'number') && Math.abs(e.speedFactor - val) < minDelta);
+  }
+
+  /**
+   * Get fallback speed when no unique speed found.
+   * @param {number} min - Minimum speed
+   * @param {number} max - Maximum speed
+   * @returns {number} Fallback speed
+   * @private
+   */
+  _getFallbackSpeed(min, max) {
+    const v = min + Math.random() * (max - min);
+    let out = Math.max(min, Math.min(max, Math.round(v * 100) / 100));
+    try { if ((this.difficulty || 'normal').toString().toLowerCase() === 'easy') out = Math.max(min, Math.min(max, Math.round(out * 0.85 * 100) / 100)); } catch(_){}
+    return out;
   }
 
   /**

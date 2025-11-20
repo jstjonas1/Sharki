@@ -54,40 +54,79 @@ class MovableObject {
     static computeTrim(img) {
         if (!img || !(img instanceof Image) || !img.complete) return { sx: 0, sy: 0, sw: img.naturalWidth || 0, sh: img.naturalHeight || 0 };
         if (img._trim) return img._trim;
-        const w = img.naturalWidth;
-        const h = img.naturalHeight;
-        const c = document.createElement('canvas');
-        c.width = w;
-        c.height = h;
-        const cx = c.getContext('2d');
-        cx.clearRect(0, 0, w, h);
-        cx.drawImage(img, 0, 0);
+        const {w, h, canvas, ctx} = this._createTrimCanvas(img);
         try {
-            const data = cx.getImageData(0, 0, w, h).data;
-            let minX = w, minY = h, maxX = 0, maxY = 0;
-            let has = false;
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    const idx = (y * w + x) * 4 + 3; // alpha channel
-                    if (data[idx] > 0) {
-                        has = true;
-                        if (x < minX) minX = x;
-                        if (x > maxX) maxX = x;
-                        if (y < minY) minY = y;
-                        if (y > maxY) maxY = y;
-                    }
-                }
-            }
-            if (!has) {
-                img._trim = { sx: 0, sy: 0, sw: w, sh: h };
-            } else {
-                img._trim = { sx: minX, sy: minY, sw: (maxX - minX + 1), sh: (maxY - minY + 1) };
-            }
+            const data = ctx.getImageData(0, 0, w, h).data;
+            const bounds = this._findVisibleBounds(data, w, h);
+            img._trim = this._calculateTrimRect(bounds, w, h);
         } catch (e) {
-          
             img._trim = { sx: 0, sy: 0, sw: w, sh: h };
         }
         return img._trim;
+    }
+
+    /**
+     * Create canvas for trim computation.
+     * @param {Image} img - Image to process
+     * @returns {Object} {w, h, canvas, ctx}
+     * @private
+     */
+    static _createTrimCanvas(img) {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0);
+        return {w, h, canvas, ctx};
+    }
+
+    /**
+     * Find visible pixel bounds in image data.
+     * @param {Uint8ClampedArray} data - Image data
+     * @param {number} w - Width
+     * @param {number} h - Height
+     * @returns {Object} {minX, minY, maxX, maxY, has}
+     * @private
+     */
+    static _findVisibleBounds(data, w, h) {
+        let minX = w, minY = h, maxX = 0, maxY = 0;
+        let has = false;
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const idx = (y * w + x) * 4 + 3;
+                if (data[idx] > 0) {
+                    has = true;
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+        return {minX, minY, maxX, maxY, has};
+    }
+
+    /**
+     * Calculate trim rectangle from bounds.
+     * @param {Object} bounds - Bounds data
+     * @param {number} w - Image width
+     * @param {number} h - Image height
+     * @returns {Object} Trim rect {sx, sy, sw, sh}
+     * @private
+     */
+    static _calculateTrimRect(bounds, w, h) {
+        if (!bounds.has) {
+            return { sx: 0, sy: 0, sw: w, sh: h };
+        }
+        return {
+            sx: bounds.minX,
+            sy: bounds.minY,
+            sw: (bounds.maxX - bounds.minX + 1),
+            sh: (bounds.maxY - bounds.minY + 1)
+        };
     }
 
     /**
@@ -267,18 +306,40 @@ class MovableObject {
      */
     async _scanPatternIndices(base, patternList, maxTries, tryLoad) {
         const frames = [];
-        let consecutiveMisses = 0;
-        const missStop = 3;
+        const {missStop, state} = this._initScanState();
         for (let i = 1; i <= maxTries; i++) {
             const found = await this._tryPatternIndex(base, patternList, i, tryLoad, frames);
-            if (!found) {
-                consecutiveMisses++;
-                if (frames.length > 0 && consecutiveMisses >= missStop) break;
-            } else {
-                consecutiveMisses = 0;
-            }
+            if (this._shouldStopScan(found, frames.length, state, missStop)) break;
         }
         return frames;
+    }
+
+    /**
+     * Initialize scan state.
+     * @returns {Object} {missStop, state}
+     * @private
+     */
+    _initScanState() {
+        return { missStop: 3, state: { consecutiveMisses: 0 } };
+    }
+
+    /**
+     * Check if scan should stop.
+     * @param {boolean} found - Whether frame was found
+     * @param {number} framesLength - Current frames count
+     * @param {Object} state - Scan state
+     * @param {number} missStop - Miss stop threshold
+     * @returns {boolean} True if should stop
+     * @private
+     */
+    _shouldStopScan(found, framesLength, state, missStop) {
+        if (!found) {
+            state.consecutiveMisses++;
+            return framesLength > 0 && state.consecutiveMisses >= missStop;
+        } else {
+            state.consecutiveMisses = 0;
+            return false;
+        }
     }
 
     /**
@@ -447,17 +508,30 @@ class MovableObject {
     _calculateDrawDimensions(trim) {
         const targetW = this.width || trim.sw;
         const targetH = this.height || trim.sh;
-        const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
-        const baseW = Math.max(1, Math.round(trim.sw * scale));
-        const baseH = Math.max(1, Math.round(trim.sh * scale));
-        const offsetX = Math.round((targetW - baseW) / 2);
-        const offsetY = Math.round((targetH - baseH) / 2);
+        const {baseW, baseH, offsetX, offsetY} = this._calculateBaseScaling(trim, targetW, targetH);
         const vMult = (typeof this.visualSizeMultiplier === 'number') ? this.visualSizeMultiplier : 1;
         const dw = Math.max(1, Math.round(baseW * vMult));
         const dh = Math.max(1, Math.round(baseH * vMult));
         const dx = Math.round(this.x + offsetX - (dw - baseW) / 2);
         const dy = Math.round(this.y + offsetY - (dh - baseH) / 2);
         return { dx, dy, dw, dh };
+    }
+
+    /**
+     * Calculate base scaling dimensions.
+     * @param {Object} trim - Trim data
+     * @param {number} targetW - Target width
+     * @param {number} targetH - Target height
+     * @returns {Object} {baseW, baseH, offsetX, offsetY}
+     * @private
+     */
+    _calculateBaseScaling(trim, targetW, targetH) {
+        const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
+        const baseW = Math.max(1, Math.round(trim.sw * scale));
+        const baseH = Math.max(1, Math.round(trim.sh * scale));
+        const offsetX = Math.round((targetW - baseW) / 2);
+        const offsetY = Math.round((targetH - baseH) / 2);
+        return {baseW, baseH, offsetX, offsetY};
     }
 
     /**
