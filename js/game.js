@@ -304,9 +304,27 @@ function startGame() {
     const mode = getSelected('startMode', 'light');
     const difficulty = getSelected('difficulty', 'normal');
     saveGameSettings(mode, difficulty);
+    closeAllOverlays();
+    destroyWorld();
+    createAndConfigureWorld(canvas, mode, difficulty);
+    hideStartMenu();
+}
+
+/**
+ * Close all UI overlays.
+ */
+function closeAllOverlays() {
     try { hideHighscoresUI(); } catch (e) {}
     try { hideGameOverUI(); } catch (e) {}
-    destroyWorld();
+}
+
+/**
+ * Create and configure world instance.
+ * @param {HTMLCanvasElement} canvas
+ * @param {string} mode
+ * @param {string} difficulty
+ */
+function createAndConfigureWorld(canvas, mode, difficulty) {
     world = new World(canvas, { autoStart: false });
     try { window.world = world; } catch (e) {}
     world.difficulty = difficulty;
@@ -314,7 +332,6 @@ function startGame() {
     const dark = (mode === 'dark') || (localStorage.getItem('sharkyDarkMode') === '1');
     if (typeof world.setDarkMode === 'function') world.setDarkMode(dark);
     world.start();
-    hideStartMenu();
 }
 
 /**
@@ -371,15 +388,32 @@ function setupMusicControls(musicMute, musicRange, musicVolLabel) {
 function setupTouchToggle(touchToggle) {
     window.__userAutoDisabled = false;
     window.__userForcedTouch = undefined;
-    if (touchToggle) {
-        touchToggle.addEventListener('change', (e) => {
-            const want = !!e.target.checked;
-            window.__userAutoDisabled = true;
-            window.__userForcedTouch = want;
-            try { localStorage.setItem('sharkyTouchForced', want ? '1' : '0'); } catch (err) {}
-            if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(want);
-        });
-    }
+    if (!touchToggle) return;
+    if (!hasTouchCapability()) disableTouchToggle(touchToggle);
+    touchToggle.addEventListener('change', (e) => handleTouchToggleChange(e));
+}
+
+/**
+ * Disable touch toggle on non-touch devices.
+ * @param {HTMLElement} touchToggle
+ */
+function disableTouchToggle(touchToggle) {
+    touchToggle.disabled = true;
+    touchToggle.checked = false;
+    const label = touchToggle.parentElement;
+    if (label) label.title = 'Touch mode not available (no touch device detected)';
+}
+
+/**
+ * Handle touch toggle change event.
+ * @param {Event} e
+ */
+function handleTouchToggleChange(e) {
+    const want = !!e.target.checked;
+    window.__userAutoDisabled = true;
+    window.__userForcedTouch = want;
+    try { localStorage.setItem('sharkyTouchForced', want ? '1' : '0'); } catch (err) {}
+    if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(want);
 }
 
 /**
@@ -435,25 +469,48 @@ function init() {
     const tbtn = document.getElementById('touchModeBtn');
     if (tbtn) tbtn.style.display = 'none';
     showStartMenu();
+    setupButtonListeners();
+    setupAllControls();
+    initializeOverlays();
+    preloadSounds();
+}
+
+/**
+ * Setup button event listeners.
+ */
+function setupButtonListeners() {
     const startBtn = document.getElementById('startBtn');
-    if (startBtn) startBtn.addEventListener('click', startGame);
+    if (startBtn) {
+        startBtn.addEventListener('click', startGame);
+        startBtn.addEventListener('click', () => { try { BGM.ensureStarted(); } catch(e){} });
+    }
     const howTo = document.getElementById('howToBtn');
     if (howTo) howTo.addEventListener('click', () => { try { showHowToOverlay(); } catch (e) {} });
     const r = document.getElementById('restartBtn');
     if (r) r.addEventListener('click', () => { if (world) world.restartGame(); });
-    if (startBtn) startBtn.addEventListener('click', () => { try { BGM.ensureStarted(); } catch(e){} });
+}
+
+/**
+ * Setup all control panels.
+ */
+function setupAllControls() {
     setupDarkModeListeners(document.getElementById('darkToggleInline'), document.getElementById('darkToggle'));
     setupSoundControls(document.getElementById('muteToggleInline'), document.getElementById('volumeRange'), document.getElementById('volLabel'));
     setupMusicControls(document.getElementById('musicMuteToggle'), document.getElementById('musicVolumeRange'), document.getElementById('musicVolLabel'));
     const touchToggle = document.getElementById('touchToggle');
     setupTouchToggle(touchToggle);
+    restoreTouchMode(touchToggle);
+}
+
+/**
+ * Initialize all overlays and detection.
+ */
+function initializeOverlays() {
     monitorEndState();
     ensurePauseOverlay();
     ensureTouchOverlay();
     ensureMobileRotatePrompt();
-    restoreTouchMode(touchToggle);
     setupMobileDetection();
-    preloadSounds();
 }
 
 window.init = init;
@@ -1073,6 +1130,10 @@ function hideHighscoresUI() {
      * Enable touch overlay mode.
      */
     async function enableTouchMode() {
+        if (!hasTouchCapability()) {
+            console.log('Touch mode not available: no touch capability detected');
+            return;
+        }
         setNoScroll(true);
         saveCanvasStyle();
         if (isLandscape()) {
@@ -1109,6 +1170,12 @@ function hideHighscoresUI() {
      * @param {boolean} on
      */
     async function setTouchOverlayOn(on) {
+        if (on && !hasTouchCapability()) {
+            console.log('Cannot enable touch mode: device has no touch capability');
+            window.__touchOverlayOn = false;
+            try { const t = document.getElementById('touchToggle'); if (t) t.checked = false; } catch (e) {}
+            return;
+        }
         window.__touchOverlayOn = !!on;
         try { const t = document.getElementById('touchToggle'); if (t) t.checked = !!on; } catch (e) {}
         ensureRotateOverlay();
@@ -1143,6 +1210,20 @@ function hideHighscoresUI() {
     }
     
     /**
+     * Detect if device has touch capabilities.
+     * @returns {boolean}
+     */
+    function hasTouchCapability() {
+        try {
+            return ('ontouchstart' in window) || 
+                   (navigator.maxTouchPoints > 0) || 
+                   (navigator.msMaxTouchPoints > 0);
+        } catch (e) {
+            return false;
+        }
+    }
+    
+    /**
      * Handle portrait orientation on mobile.
      */
     function handlePortraitMode() {
@@ -1157,7 +1238,7 @@ function hideHighscoresUI() {
      */
     function handleLandscapeMode() {
         hideMobileRotatePrompt();
-        if (!window.__userAutoDisabled && typeof window.__userForcedTouch === 'undefined') {
+        if (hasTouchCapability() && !window.__userAutoDisabled && typeof window.__userForcedTouch === 'undefined') {
             const touchToggle = document.getElementById('touchToggle');
             if (touchToggle) touchToggle.checked = true;
             if (typeof window.setTouchOverlayOn === 'function') {

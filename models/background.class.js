@@ -31,22 +31,45 @@ class BackgroundObject extends MovableObject {
     drawTo(ctx) {
         try {
             if (this.img instanceof Image && this.img.complete) {
-                const trim = this.img._trim || { sx: 0, sy: 0, sw: this.img.naturalWidth, sh: this.img.naturalHeight };
-                const canvasH = ctx.canvas.height || this.height || 480;
-                const scale = canvasH / (trim.sh || 1);
-                const dw = Math.max(1, Math.round(trim.sw * scale));
-                const dh = Math.max(1, Math.round(trim.sh * scale));
-              
-                const dx = Math.round((ctx.canvas.width - dw) / 2);
-                const dy = 0;
-                ctx.drawImage(this.img, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, dw, dh);
-                this._lastDraw = { x: dx, y: dy, width: dw, height: dh };
+                this._drawBackgroundImage(ctx);
                 return;
             }
-        } catch (e) {
-          
-        }
-      
+        } catch (e) {}
         if (typeof super.drawTo === 'function') super.drawTo(ctx);
+    }
+
+    /**
+     * Draw background image scaled to canvas height.
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
+    _drawBackgroundImage(ctx) {
+        const trim = this._getTrimData();
+        const { dx, dy, dw, dh } = this._calculateBackgroundDimensions(ctx, trim);
+        ctx.drawImage(this.img, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, dw, dh);
+        this._lastDraw = { x: dx, y: dy, width: dw, height: dh };
+    }
+
+    /**
+     * Get trim data for background image.
+     * @returns {Object} Trim data
+     */
+    _getTrimData() {
+        return this.img._trim || { sx: 0, sy: 0, sw: this.img.naturalWidth, sh: this.img.naturalHeight };
+    }
+
+    /**
+     * Calculate background draw dimensions.
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {Object} trim - Trim data
+     * @returns {Object} {dx, dy, dw, dh}
+     */
+    _calculateBackgroundDimensions(ctx, trim) {
+        const canvasH = ctx.canvas.height || this.height || 480;
+        const scale = canvasH / (trim.sh || 1);
+        const dw = Math.max(1, Math.round(trim.sw * scale));
+        const dh = Math.max(1, Math.round(trim.sh * scale));
+        const dx = Math.round((ctx.canvas.width - dw) / 2);
+        const dy = 0;
+        return { dx, dy, dw, dh };
     }
 }

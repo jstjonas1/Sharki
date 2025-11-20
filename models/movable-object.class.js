@@ -9,20 +9,38 @@ class MovableObject {
     
   
     loadImage(path) {
-      
-    const img = new Image();
-  
-    try { this._firstFramePath = path; this.img = img; } catch (e) {}
-        const p = new Promise((resolve, reject) => {
-            img.onload = () => {
-                this.img = img;
-                resolve(this);
-            };
+        const img = new Image();
+        try { this._firstFramePath = path; this.img = img; } catch (e) {}
+        const p = this._createImageLoadPromise(img, path);
+        this._trackPendingLoad(p);
+        return p;
+    }
+
+    /**
+     * Create promise for image loading.
+     * @param {Image} img - Image element
+     * @param {string} path - Image path
+     * @returns {Promise} Load promise
+     */
+    _createImageLoadPromise(img, path) {
+        return new Promise((resolve, reject) => {
+            img.onload = () => { this.img = img; resolve(this); };
             img.onerror = () => reject(new Error('Failed to load ' + path));
             img.src = path;
         });
-        try { if (typeof window !== 'undefined') { window._pendingLoads = window._pendingLoads || []; window._pendingLoads.push(p); } } catch (e) {}
-        return p;
+    }
+
+    /**
+     * Track pending load in window._pendingLoads.
+     * @param {Promise} p - Promise to track
+     */
+    _trackPendingLoad(p) {
+        try { 
+            if (typeof window !== 'undefined') { 
+                window._pendingLoads = window._pendingLoads || []; 
+                window._pendingLoads.push(p); 
+            } 
+        } catch (e) {}
     }
 
   
@@ -78,263 +96,461 @@ class MovableObject {
 
   
     loadFrames(paths = [], frameInterval = 100) {
+        this._initializeFrameData(paths, frameInterval);
+        const loaders = this._createFrameLoaders(paths);
+        this._trackPendingLoads(loaders);
+        return this._processLoadedFrames(loaders);
+    }
+
+    /**
+     * Initialize frame data structure.
+     * @param {Array} paths - Image paths
+     * @param {number} frameInterval - Frame interval
+     */
+    _initializeFrameData(paths, frameInterval) {
         this.frames = [];
         this.frameIndex = 0;
         this.frameInterval = frameInterval;
-  
-    try { if (Array.isArray(paths) && paths.length > 0) { this._firstFramePath = paths[0]; try { this.img = new Image(); this.img.src = paths[0]; } catch (e) {} } } catch (e) {}
-        const loaders = paths.map(p => new Promise((resolve, reject) => {
+        try { 
+            if (Array.isArray(paths) && paths.length > 0) { 
+                this._firstFramePath = paths[0]; 
+                try { this.img = new Image(); this.img.src = paths[0]; } catch (e) {} 
+            } 
+        } catch (e) {}
+    }
+
+    /**
+     * Create image loaders for all frame paths.
+     * @param {Array} paths - Image paths
+     * @returns {Array} Array of promises
+     */
+    _createFrameLoaders(paths) {
+        return paths.map(p => new Promise((resolve, reject) => {
             const i = new Image();
             i.onload = () => resolve(i);
             i.onerror = () => reject(new Error('Failed to load ' + p));
             i.src = p;
         }));
-      
-        try { if (typeof window !== 'undefined') { window._pendingLoads = window._pendingLoads || []; window._pendingLoads.push(...loaders); } } catch (e) {}
+    }
+
+    /**
+     * Track multiple pending loads.
+     * @param {Array} loaders - Array of promises
+     */
+    _trackPendingLoads(loaders) {
+        try { 
+            if (typeof window !== 'undefined') { 
+                window._pendingLoads = window._pendingLoads || []; 
+                window._pendingLoads.push(...loaders); 
+            } 
+        } catch (e) {}
+    }
+
+    /**
+     * Process loaded frame images.
+     * @param {Array} loaders - Array of promises
+     * @returns {Promise} Promise resolving to this
+     */
+    _processLoadedFrames(loaders) {
         return Promise.all(loaders).then(images => {
             this.frames = images;
             this.img = this.frames[0];
-          
-          
             this.frameTrims = this.frames.map(f => MovableObject.computeTrim(f));
-            if (!this.width || !this.height) {
-                const t0 = this.frameTrims[0] || { sw: this.img.naturalWidth, sh: this.img.naturalHeight };
-                this.width = t0.sw || this.img.naturalWidth || this.width;
-                this.height = t0.sh || this.img.naturalHeight || this.height;
-            }
+            this._setInitialDimensions();
             this._lastFrameTick = Date.now();
             return this;
         });
     }
 
+    /**
+     * Set initial width/height from first frame trim.
+     */
+    _setInitialDimensions() {
+        if (!this.width || !this.height) {
+            const t0 = this.frameTrims[0] || { sw: this.img.naturalWidth, sh: this.img.naturalHeight };
+            this.width = t0.sw || this.img.naturalWidth || this.width;
+            this.height = t0.sh || this.img.naturalHeight || this.height;
+        }
+    }
+
   
     loadFramesPattern(base, patternList = ['{i}.png'], maxTries = 12, frameInterval = 100) {
-      
+        if (this._tryLoadFromManifest(base, frameInterval)) {
+            return this._tryLoadFromManifest(base, frameInterval);
+        }
+        this._setFirstFrameGuess(base, patternList);
+        return this._probePatternFrames(base, patternList, maxTries, frameInterval);
+    }
+
+    /**
+     * Try loading from FRAMES_MANIFEST if available.
+     * @param {string} base - Base path
+     * @param {number} frameInterval - Frame interval
+     * @returns {Promise|null} Promise or null
+     */
+    _tryLoadFromManifest(base, frameInterval) {
         try {
             if (typeof window !== 'undefined' && window.FRAMES_MANIFEST && Array.isArray(window.FRAMES_MANIFEST[base])) {
                 const list = window.FRAMES_MANIFEST[base].map(fn => base + fn);
                 return this.loadFrames(list, frameInterval);
             }
         } catch (e) {}
+        return null;
+    }
 
-      
-      
+    /**
+     * Set first frame guess for early display.
+     * @param {string} base - Base path
+     * @param {Array} patternList - Pattern list
+     */
+    _setFirstFrameGuess(base, patternList) {
         try {
             const guess = base + patternList[0].replace('{i}', 1);
             this._firstFramePath = guess;
             try { this.img = new Image(); this.img.src = guess; } catch (e) {}
         } catch (e) {}
+    }
+
+    /**
+     * Probe and load frames matching patterns.
+     * @param {string} base - Base path
+     * @param {Array} patternList - Pattern list
+     * @param {number} maxTries - Max indices
+     * @param {number} frameInterval - Frame interval
+     * @returns {Promise} Promise resolving to this
+     */
+    _probePatternFrames(base, patternList, maxTries, frameInterval) {
         const tryLoad = (path) => new Promise((resolve) => {
             const img = new Image();
             img.onload = () => resolve(img);
             img.onerror = () => resolve(null);
             img.src = path;
         });
-
-    return new Promise(async (resolve, reject) => {
-            const probes = [];
-            const frames = [];
-            let consecutiveMisses = 0;
-            const missStop = 3; // stop after this many consecutive indices with no match
-            for (let i = 1; i <= maxTries; i++) {
-                let foundThisIndex = false;
-                for (const pat of patternList) {
-                    const name = pat.replace('{i}', i);
-                    const path = base + name;
-                  
-                  
-                    const p = tryLoad(path);
-                    try { if (typeof window !== 'undefined') { window._pendingLoads = window._pendingLoads || []; window._pendingLoads.push(p); } } catch (e) {}
-                    probes.push(p);
-                    const img = await p;
-                    if (img) {
-                        frames.push(img);
-                        foundThisIndex = true;
-                        consecutiveMisses = 0;
-                        break; // prefer first matching pattern for this index
-                    }
-                }
-                if (!foundThisIndex) {
-                    consecutiveMisses++;
-                    if (frames.length > 0 && consecutiveMisses >= missStop) break;
-                }
-            }
-
+        return new Promise(async (resolve, reject) => {
+            const frames = await this._scanPatternIndices(base, patternList, maxTries, tryLoad);
             if (frames.length === 0) return reject(new Error('pattern load failed'));
-
-          
-            this.frames = frames;
-            this.frameIndex = 0;
-            this.frameInterval = frameInterval;
-            this.frameTrims = this.frames.map(f => MovableObject.computeTrim(f));
-            this.img = this.frames[0];
-            if (!this.width || !this.height) {
-                const t0 = this.frameTrims[0] || { sw: this.img.naturalWidth, sh: this.img.naturalHeight };
-                this.width = t0.sw || this.img.naturalWidth || this.width;
-                this.height = t0.sh || this.img.naturalHeight || this.height;
-            }
-            this._lastFrameTick = Date.now();
+            this._finalizePatternFrames(frames, frameInterval);
             resolve(this);
         });
     }
 
+    /**
+     * Scan indices for pattern matches.
+     * @param {string} base - Base path
+     * @param {Array} patternList - Pattern list
+     * @param {number} maxTries - Max indices
+     * @param {Function} tryLoad - Load function
+     * @returns {Promise<Array>} Frame images
+     */
+    async _scanPatternIndices(base, patternList, maxTries, tryLoad) {
+        const frames = [];
+        let consecutiveMisses = 0;
+        const missStop = 3;
+        for (let i = 1; i <= maxTries; i++) {
+            const found = await this._tryPatternIndex(base, patternList, i, tryLoad, frames);
+            if (!found) {
+                consecutiveMisses++;
+                if (frames.length > 0 && consecutiveMisses >= missStop) break;
+            } else {
+                consecutiveMisses = 0;
+            }
+        }
+        return frames;
+    }
+
+    /**
+     * Try loading a specific index with all patterns.
+     * @param {string} base - Base path
+     * @param {Array} patternList - Pattern list
+     * @param {number} i - Index
+     * @param {Function} tryLoad - Load function
+     * @param {Array} frames - Frames array to push to
+     * @returns {Promise<boolean>} True if found
+     */
+    async _tryPatternIndex(base, patternList, i, tryLoad, frames) {
+        for (const pat of patternList) {
+            const name = pat.replace('{i}', i);
+            const path = base + name;
+            const p = tryLoad(path);
+            try { if (typeof window !== 'undefined') { window._pendingLoads = window._pendingLoads || []; window._pendingLoads.push(p); } } catch (e) {}
+            const img = await p;
+            if (img) {
+                frames.push(img);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Finalize pattern frames after loading.
+     * @param {Array} frames - Loaded frames
+     * @param {number} frameInterval - Frame interval
+     */
+    _finalizePatternFrames(frames, frameInterval) {
+        this.frames = frames;
+        this.frameIndex = 0;
+        this.frameInterval = frameInterval;
+        this.frameTrims = this.frames.map(f => MovableObject.computeTrim(f));
+        this.img = this.frames[0];
+        this._setInitialDimensions();
+        this._lastFrameTick = Date.now();
+    }
+
   
     drawTo(ctx) {
-      
         if (this.frames && this.frames.length > 1) {
-            const now = Date.now();
-            if (!this._lastFrameTick) this._lastFrameTick = now;
-          
-          
-            let speedRatio = 0;
-            try {
-                const world = (typeof window !== 'undefined') ? window.world : null;
-                const charBasePx = (world && world.character && typeof world.character.speed === 'number') ? (world.character.speed * 60) : ((this.speed || 1) * 60);
-                const cur = (typeof this._currentSpeed === 'number') ? this._currentSpeed : 0;
-                if (charBasePx > 0) speedRatio = cur / charBasePx;
-            } catch (e) { speedRatio = 0; }
-          
-          
-            const effInterval = Math.max(25, Math.round((this.frameInterval || 100) / (0.5 + speedRatio)));
-            const delta = now - this._lastFrameTick;
-            if (delta >= effInterval) {
-                const nextIndex = this.frameIndex + 1;
-                if (this.animationLoop === false) {
-                  
-                    if (nextIndex >= this.frames.length) {
-                        this.frameIndex = this.frames.length - 1;
-                        this.img = this.frames[this.frameIndex];
-                        this._lastFrameTick = now;
-                        if (typeof this._onAnimationEnd === 'function') {
-                            const cb = this._onAnimationEnd;
-                            this._onAnimationEnd = null;
-                            try { cb(); } catch (e) {}
-                        }
-                    } else {
-                        this.frameIndex = nextIndex;
-                        this.img = this.frames[this.frameIndex];
-                        this._lastFrameTick = now;
-                    }
-                } else {
-                    this.frameIndex = nextIndex % this.frames.length;
-                    this.img = this.frames[this.frameIndex];
-                    this._lastFrameTick = now;
-                }
+            this._updateFrameAnimation();
+        }
+        if (this.img instanceof Image && this.img.complete) {
+            this._drawMainImage(ctx);
+        } else {
+            if (!this._tryDrawFromAssetCache(ctx)) {
+                ctx.fillStyle = 'rgba(255,0,0,.25)';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
             }
         }
+    }
 
-        if (this.img instanceof Image && this.img.complete) {
-          
-            const trim = this.img._trim || (this.frameTrims && this.frameTrims[this.frameIndex]) || { sx: 0, sy: 0, sw: this.img.naturalWidth, sh: this.img.naturalHeight };
-            try {
-              
-                const targetW = this.width || trim.sw;
-                const targetH = this.height || trim.sh;
-                const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
-                const dw = Math.max(1, Math.round(trim.sw * scale));
-                const dh = Math.max(1, Math.round(trim.sh * scale));
-                const offsetX = Math.round((targetW - dw) / 2);
-                const offsetY = Math.round((targetH - dh) / 2);
-                const dx = this.x + offsetX;
-                const dy = this.y + offsetY;
+    /**
+     * Update frame animation based on timing.
+     */
+    _updateFrameAnimation() {
+        const now = Date.now();
+        if (!this._lastFrameTick) this._lastFrameTick = now;
+        const speedRatio = this._calculateSpeedRatio();
+        const effInterval = this._getEffectiveFrameInterval(speedRatio);
+        const delta = now - this._lastFrameTick;
+        if (delta >= effInterval) {
+            this._advanceFrame(now);
+        }
+    }
 
-              
-                const vMult = (typeof this.visualSizeMultiplier === 'number') ? this.visualSizeMultiplier : 1;
-                const dwFinal = Math.max(1, Math.round(dw * vMult));
-                const dhFinal = Math.max(1, Math.round(dh * vMult));
-              
-                const dxFinal = Math.round(dx - (dwFinal - dw) / 2);
-                const dyFinal = Math.round(dy - (dhFinal - dh) / 2);
-                if (this.flipX) {
-                    ctx.save();
-                  
-                    const cx = dxFinal + dwFinal / 2;
-                    const cy = dyFinal + dhFinal / 2;
-                    ctx.translate(cx, cy);
-                    ctx.scale(-1, 1);
-                    ctx.drawImage(this.img, trim.sx, trim.sy, trim.sw, trim.sh, -dwFinal / 2, -dhFinal / 2, dwFinal, dhFinal);
-                    ctx.restore();
-                } else {
-                    ctx.drawImage(this.img, trim.sx, trim.sy, trim.sw, trim.sh, dxFinal, dyFinal, dwFinal, dhFinal);
-                }
-              
-                this._lastDraw = { x: dxFinal, y: dyFinal, width: dwFinal, height: dhFinal };
-              
-                this._lastDraw = { x: dx, y: dy, width: dw, height: dh };
-            } catch (e) {
-              
-                try {
-                    if (this.flipX) {
-                        ctx.save();
-                        const cx = this.x + this.width / 2;
-                        const cy = this.y + this.height / 2;
-                        ctx.translate(cx, cy);
-                        ctx.scale(-1, 1);
-                        ctx.drawImage(this.img, -this.width / 2, -this.height / 2, this.width, this.height);
-                        ctx.restore();
-                    } else {
-                        ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
-                    }
-                    this._lastDraw = { x: this.x, y: this.y, width: this.width, height: this.height };
-                } catch (e2) {
-                  
-                    ctx.fillStyle = 'rgba(255,0,0,.25)';
-                    ctx.fillRect(this.x, this.y, this.width, this.height);
-                    this._lastDraw = { x: this.x, y: this.y, width: this.width, height: this.height };
-                }
+    /**
+     * Calculate speed ratio for animation timing.
+     * @returns {number} Speed ratio
+     */
+    _calculateSpeedRatio() {
+        try {
+            const world = (typeof window !== 'undefined') ? window.world : null;
+            const charBasePx = (world && world.character && typeof world.character.speed === 'number') ? (world.character.speed * 60) : ((this.speed || 1) * 60);
+            const cur = (typeof this._currentSpeed === 'number') ? this._currentSpeed : 0;
+            return charBasePx > 0 ? cur / charBasePx : 0;
+        } catch (e) { return 0; }
+    }
+
+    /**
+     * Get effective frame interval based on speed.
+     * @param {number} speedRatio - Speed ratio
+     * @returns {number} Interval in ms
+     */
+    _getEffectiveFrameInterval(speedRatio) {
+        return Math.max(25, Math.round((this.frameInterval || 100) / (0.5 + speedRatio)));
+    }
+
+    /**
+     * Advance to next frame.
+     * @param {number} now - Current timestamp
+     */
+    _advanceFrame(now) {
+        const nextIndex = this.frameIndex + 1;
+        if (this.animationLoop === false) {
+            this._advanceNonLooping(nextIndex, now);
+        } else {
+            this.frameIndex = nextIndex % this.frames.length;
+            this.img = this.frames[this.frameIndex];
+            this._lastFrameTick = now;
+        }
+    }
+
+    /**
+     * Advance non-looping animation.
+     * @param {number} nextIndex - Next frame index
+     * @param {number} now - Timestamp
+     */
+    _advanceNonLooping(nextIndex, now) {
+        if (nextIndex >= this.frames.length) {
+            this.frameIndex = this.frames.length - 1;
+            this.img = this.frames[this.frameIndex];
+            this._lastFrameTick = now;
+            if (typeof this._onAnimationEnd === 'function') {
+                const cb = this._onAnimationEnd;
+                this._onAnimationEnd = null;
+                try { cb(); } catch (e) {}
             }
         } else {
-          
-            try {
-                const path = this._firstFramePath;
-                if (path && typeof window !== 'undefined' && window._assetCache && window._assetCache[path] instanceof Image && window._assetCache[path].complete) {
-                    const aimg = window._assetCache[path];
-                    const trim = aimg._trim || { sx: 0, sy: 0, sw: aimg.naturalWidth, sh: aimg.naturalHeight };
-                    const targetW = this.width || trim.sw;
-                    const targetH = this.height || trim.sh;
-                    const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
-                    const dw = Math.max(1, Math.round(trim.sw * scale));
-                    const dh = Math.max(1, Math.round(trim.sh * scale));
-                    const offsetX = Math.round((targetW - dw) / 2);
-                    const offsetY = Math.round((targetH - dh) / 2);
-                    const dx = this.x + offsetX;
-                    const dy = this.y + offsetY;
-                    ctx.drawImage(aimg, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, dw, dh);
-                    this._lastDraw = { x: dx, y: dy, width: dw, height: dh };
-                    return;
-                }
-            } catch (e) {}
+            this.frameIndex = nextIndex;
+            this.img = this.frames[this.frameIndex];
+            this._lastFrameTick = now;
+        }
+    }
+
+    /**
+     * Draw main image with trimming and scaling.
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
+    _drawMainImage(ctx) {
+        const trim = this._getTrimData();
+        try {
+            const { dx, dy, dw, dh } = this._calculateDrawDimensions(trim);
+            if (this.flipX) {
+                this._drawFlipped(ctx, trim, dx, dy, dw, dh);
+            } else {
+                ctx.drawImage(this.img, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, dw, dh);
+            }
+            this._lastDraw = { x: dx, y: dy, width: dw, height: dh };
+        } catch (e) {
+            this._drawFallbackImage(ctx);
+        }
+    }
+
+    /**
+     * Get trim data for current image.
+     * @returns {Object} Trim data
+     */
+    _getTrimData() {
+        return this.img._trim || (this.frameTrims && this.frameTrims[this.frameIndex]) || 
+               { sx: 0, sy: 0, sw: this.img.naturalWidth, sh: this.img.naturalHeight };
+    }
+
+    /**
+     * Calculate final draw dimensions with scaling and visual multiplier.
+     * @param {Object} trim - Trim data
+     * @returns {Object} {dx, dy, dw, dh}
+     */
+    _calculateDrawDimensions(trim) {
+        const targetW = this.width || trim.sw;
+        const targetH = this.height || trim.sh;
+        const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
+        const baseW = Math.max(1, Math.round(trim.sw * scale));
+        const baseH = Math.max(1, Math.round(trim.sh * scale));
+        const offsetX = Math.round((targetW - baseW) / 2);
+        const offsetY = Math.round((targetH - baseH) / 2);
+        const vMult = (typeof this.visualSizeMultiplier === 'number') ? this.visualSizeMultiplier : 1;
+        const dw = Math.max(1, Math.round(baseW * vMult));
+        const dh = Math.max(1, Math.round(baseH * vMult));
+        const dx = Math.round(this.x + offsetX - (dw - baseW) / 2);
+        const dy = Math.round(this.y + offsetY - (dh - baseH) / 2);
+        return { dx, dy, dw, dh };
+    }
+
+    /**
+     * Draw image flipped horizontally.
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @param {Object} trim - Trim data
+     * @param {number} dx - X position
+     * @param {number} dy - Y position
+     * @param {number} dw - Width
+     * @param {number} dh - Height
+     */
+    _drawFlipped(ctx, trim, dx, dy, dw, dh) {
+        ctx.save();
+        const cx = dx + dw / 2;
+        const cy = dy + dh / 2;
+        ctx.translate(cx, cy);
+        ctx.scale(-1, 1);
+        ctx.drawImage(this.img, trim.sx, trim.sy, trim.sw, trim.sh, -dw / 2, -dh / 2, dw, dh);
+        ctx.restore();
+    }
+
+    /**
+     * Draw fallback image when main draw fails.
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     */
+    _drawFallbackImage(ctx) {
+        try {
+            if (this.flipX) {
+                ctx.save();
+                const cx = this.x + this.width / 2;
+                const cy = this.y + this.height / 2;
+                ctx.translate(cx, cy);
+                ctx.scale(-1, 1);
+                ctx.drawImage(this.img, -this.width / 2, -this.height / 2, this.width, this.height);
+                ctx.restore();
+            } else {
+                ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+            }
+            this._lastDraw = { x: this.x, y: this.y, width: this.width, height: this.height };
+        } catch (e2) {
             ctx.fillStyle = 'rgba(255,0,0,.25)';
             ctx.fillRect(this.x, this.y, this.width, this.height);
+            this._lastDraw = { x: this.x, y: this.y, width: this.width, height: this.height };
         }
+    }
+
+    /**
+     * Try drawing from asset cache.
+     * @param {CanvasRenderingContext2D} ctx - Canvas context
+     * @returns {boolean} True if drawn successfully
+     */
+    _tryDrawFromAssetCache(ctx) {
+        try {
+            const path = this._firstFramePath;
+            if (path && typeof window !== 'undefined' && window._assetCache && window._assetCache[path] instanceof Image && window._assetCache[path].complete) {
+                const aimg = window._assetCache[path];
+                const trim = aimg._trim || { sx: 0, sy: 0, sw: aimg.naturalWidth, sh: aimg.naturalHeight };
+                const { dx, dy, dw, dh } = this._calculateCacheDrawDimensions(trim);
+                ctx.drawImage(aimg, trim.sx, trim.sy, trim.sw, trim.sh, dx, dy, dw, dh);
+                this._lastDraw = { x: dx, y: dy, width: dw, height: dh };
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    /**
+     * Calculate draw dimensions for asset cache image.
+     * @param {Object} trim - Trim data
+     * @returns {Object} {dx, dy, dw, dh}
+     */
+    _calculateCacheDrawDimensions(trim) {
+        const targetW = this.width || trim.sw;
+        const targetH = this.height || trim.sh;
+        const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
+        const dw = Math.max(1, Math.round(trim.sw * scale));
+        const dh = Math.max(1, Math.round(trim.sh * scale));
+        const offsetX = Math.round((targetW - dw) / 2);
+        const offsetY = Math.round((targetH - dh) / 2);
+        return { dx: this.x + offsetX, dy: this.y + offsetY, dw, dh };
     }
 
   
     getHitBox() {
-      
-        let dx = this.x, dy = this.y, dw = this.width, dh = this.height;
-        if (this._lastDraw) {
-            dx = this._lastDraw.x; dy = this._lastDraw.y; dw = this._lastDraw.width; dh = this._lastDraw.height;
-        }
-      
-        else if (this.img && this.img._trim) {
-            const trim = this.img._trim;
-          
-            const targetW = this.width || trim.sw;
-            const targetH = this.height || trim.sh;
-            const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
-            dw = Math.max(1, Math.round(trim.sw * scale));
-            dh = Math.max(1, Math.round(trim.sh * scale));
-            const offsetX = Math.round((targetW - dw) / 2);
-            const offsetY = Math.round((targetH - dh) / 2);
-            dx = this.x + offsetX; dy = this.y + offsetY;
-        }
-
+        const { dx, dy, dw, dh } = this._getDrawDimensions();
         const cx = Math.round(dx + dw / 2);
         const cy = Math.round(dy + dh / 2);
-      
         const r = Math.max(0, Math.round(Math.min(dw, dh) * 0.5 * 0.9));
         return { cx: cx, cy: cy, r: r, x: dx, y: dy, width: dw, height: dh };
+    }
+
+    /**
+     * Get draw dimensions for hitbox calculation.
+     * @returns {Object} {dx, dy, dw, dh}
+     */
+    _getDrawDimensions() {
+        if (this._lastDraw) {
+            return { dx: this._lastDraw.x, dy: this._lastDraw.y, dw: this._lastDraw.width, dh: this._lastDraw.height };
+        }
+        if (this.img && this.img._trim) {
+            return this._calculateTrimmedDimensions();
+        }
+        return { dx: this.x, dy: this.y, dw: this.width, dh: this.height };
+    }
+
+    /**
+     * Calculate dimensions from trim data.
+     * @returns {Object} {dx, dy, dw, dh}
+     */
+    _calculateTrimmedDimensions() {
+        const trim = this.img._trim;
+        const targetW = this.width || trim.sw;
+        const targetH = this.height || trim.sh;
+        const scale = Math.min(targetW / trim.sw, targetH / trim.sh);
+        const dw = Math.max(1, Math.round(trim.sw * scale));
+        const dh = Math.max(1, Math.round(trim.sh * scale));
+        const offsetX = Math.round((targetW - dw) / 2);
+        const offsetY = Math.round((targetH - dh) / 2);
+        return { dx: this.x + offsetX, dy: this.y + offsetY, dw, dh };
     }
 
     moveRight() {

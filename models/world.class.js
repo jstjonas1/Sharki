@@ -27,7 +27,7 @@ class World {
     './assets/img/sharki/3background/layers/1light/completo.png'
   ];
   backgroundObjects = [];
-  character  = new Character();
+  character  = null;
   enemies    = [];
   /** Game start timestamp (ms). */
   _startTime = null;
@@ -146,6 +146,7 @@ class World {
     this._lastTick = Date.now();
     this.running = false;
     this._autoStart = !!(options.autoStart !== undefined ? options.autoStart : true);
+    this.character = new Character();
     this._initBackgrounds();
     this._initialRampStart = Date.now();
     this._initialRampDuration = 10000;
@@ -988,14 +989,34 @@ class World {
    */
   _drawTopRightUi(ctx) {
     if (!ctx) return;
+    const hasTouchCapability = this._hasTouchCapability();
     const pad = 10; const btnH = 30; const pauseW = 70; const gap = 10; const sliderW = 90;
     const x2 = this.canvas.width - pad; const y = pad;
-    const px = x2 - pauseW; const py = y;
-    const sx = px - gap - sliderW; const sy = y;
-    this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
-    this._uiRects.touch = { x: sx, y: sy, w: sliderW, h: btnH };
-    this._drawTouchToggle(ctx, sx, sy, sliderW, btnH);
+    let px, py;
+    if (hasTouchCapability) {
+      px = x2 - pauseW; py = y;
+      const sx = px - gap - sliderW; const sy = y;
+      this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
+      this._uiRects.touch = { x: sx, y: sy, w: sliderW, h: btnH };
+      this._drawTouchToggle(ctx, sx, sy, sliderW, btnH);
+    } else {
+      px = x2 - pauseW; py = y;
+      this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
+      this._uiRects.touch = null;
+    }
     this._drawPauseButton(ctx, px, py, pauseW, btnH);
+  }
+
+  /**
+   * Check if device has touch capability.
+   * @returns {boolean}
+   */
+  _hasTouchCapability() {
+    try {
+      return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+    } catch (e) {
+      return false;
+    }
   }
 
   /**

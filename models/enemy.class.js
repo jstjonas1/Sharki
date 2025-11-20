@@ -32,48 +32,82 @@ class Enemy extends MovableObject {
      * @param {number} dt - Delta time in milliseconds
      */
     update(dt){
-      
+        if (this._handleStoppedState(dt)) return;
+        this._updateDirectionTimer(dt);
+        this._applyMovement(dt);
+    }
+
+    /**
+     * Handle stopped state timing.
+     * @param {number} dt - Delta time
+     * @returns {boolean} True if stopped
+     */
+    _handleStoppedState(dt) {
         if (this.isStopped) {
             this._stopTimer += dt;
             if (this._stopTimer >= this._stopDuration) {
                 this.isStopped = false;
                 this._stopTimer = 0;
-            } else {
-                return; // remain stopped
+                return false;
             }
+            return true;
         }
+        return false;
+    }
 
+    /**
+     * Update direction change timer and possibly change direction.
+     * @param {number} dt - Delta time
+     */
+    _updateDirectionTimer(dt) {
         this._changeDirTimer += dt;
         if (this._changeDirTimer >= this._changeDirInterval) {
             this._changeDirTimer = 0;
             this._changeDirInterval = 1000 + Math.random() * 2000;
-          
-            if (Math.random() < 0.25) {
-                this.isStopped = true;
-                this._stopDuration = 300 + Math.random() * 1500; // ms
-                this._stopTimer = 0;
-                this.vx = 0;
-                this.vy = 0;
-            } else {
-                const angle = Math.random() * Math.PI * 2;
-                this.vx = Math.cos(angle);
-                this.vy = Math.sin(angle);
-            }
+            this._randomizeDirection();
         }
+    }
 
-      
-        let charSpeed = (this.speed || 1);
-        if (typeof window !== 'undefined' && window.world && window.world.character && typeof window.world.character.speed === 'number') {
-            charSpeed = window.world.character.speed;
+    /**
+     * Randomize movement direction or stop.
+     */
+    _randomizeDirection() {
+        if (Math.random() < 0.25) {
+            this.isStopped = true;
+            this._stopDuration = 300 + Math.random() * 1500;
+            this._stopTimer = 0;
+            this.vx = 0;
+            this.vy = 0;
+        } else {
+            const angle = Math.random() * Math.PI * 2;
+            this.vx = Math.cos(angle);
+            this.vy = Math.sin(angle);
         }
-      
+    }
+
+    /**
+     * Apply movement based on velocity and speed.
+     * @param {number} dt - Delta time
+     */
+    _applyMovement(dt) {
+        const charSpeed = this._getCharacterSpeed();
         const effectiveFactor = Math.min(this.speedFactor, 1.0);
-    const speedPxPerSec = charSpeed * 60 * effectiveFactor; // px/sec
-    const moveAmount = speedPxPerSec * (dt / 1000);
-    this.x += this.vx * moveAmount;
-    this.y += this.vy * moveAmount;
-  
-    this._currentSpeed = Math.hypot((this.vx || 0) * speedPxPerSec, (this.vy || 0) * speedPxPerSec);
+        const speedPxPerSec = charSpeed * 60 * effectiveFactor;
+        const moveAmount = speedPxPerSec * (dt / 1000);
+        this.x += this.vx * moveAmount;
+        this.y += this.vy * moveAmount;
+        this._currentSpeed = Math.hypot((this.vx || 0) * speedPxPerSec, (this.vy || 0) * speedPxPerSec);
+    }
+
+    /**
+     * Get character speed from world.
+     * @returns {number} Character speed
+     */
+    _getCharacterSpeed() {
+        if (typeof window !== 'undefined' && window.world && window.world.character && typeof window.world.character.speed === 'number') {
+            return window.world.character.speed;
+        }
+        return this.speed || 1;
     }
 
     /**

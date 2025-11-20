@@ -25,45 +25,72 @@ class Boss extends Enemy {
      * @param {number} dt - Delta time in milliseconds since last update
      */
     update(dt) {
-      
         try {
             const world = (typeof window !== 'undefined') ? window.world : null;
-            const cx = world && world.character ? (world.character.x + (world.character.width||0)/2) : null;
-            const cy = world && world.character ? (world.character.y + (world.character.height||0)/2) : null;
-          
-            const baseSpeed = 80 * (this.speed || 1);
-            if (typeof cx === 'number' && typeof cy === 'number') {
-                const mycx = this.x + (this.width||0)/2;
-                const mycy = this.y + (this.height||0)/2;
-                const dx = cx - mycx;
-                const dy = cy - mycy;
-                const dist = Math.hypot(dx, dy) || 1;
-                const nx = dx / dist;
-                const ny = dy / dist;
-                this.vx = nx; this.vy = ny; // normalized direction
-                const movedX = nx * baseSpeed * (dt / 1000);
-                const movedY = ny * baseSpeed * (dt / 1000);
-                this.x += movedX;
-                this.y += movedY;
-              
-                this._currentSpeed = Math.hypot(nx * baseSpeed, ny * baseSpeed);
+            const target = this._getPlayerTarget(world);
+            if (target) {
+                this._chasePlayer(target, dt);
             } else {
-              
-                const speedPxPerSec = (this.speed || 1) * 60 * 0.8;
-                this.x += (this.vx || 0) * speedPxPerSec * (dt / 1000);
-                this.y += (this.vy || 0) * speedPxPerSec * (dt / 1000);
-                this._currentSpeed = Math.hypot((this.vx || 0) * speedPxPerSec, (this.vy || 0) * speedPxPerSec);
+                this._moveDefault(dt);
             }
-          
-            if (typeof window !== 'undefined' && window.world) {
-                const h = window.world.canvas.height;
-                this.y = Math.max(0, Math.min(h - this.height, this.y));
-            }
+            this._clampVerticalPosition(world);
         } catch (e) {
-          
-            const speedPxPerSec = (this.speed || 1) * 60 * 0.8;
-            this.x += (this.vx || 0) * speedPxPerSec * (dt / 1000);
-            this.y += (this.vy || 0) * speedPxPerSec * (dt / 1000);
+            this._moveDefault(dt);
+        }
+    }
+
+    /**
+     * Get player target coordinates.
+     * @param {Object} world - World instance
+     * @returns {Object|null} {cx, cy} or null
+     */
+    _getPlayerTarget(world) {
+        if (!world || !world.character) return null;
+        const cx = world.character.x + (world.character.width || 0) / 2;
+        const cy = world.character.y + (world.character.height || 0) / 2;
+        return (typeof cx === 'number' && typeof cy === 'number') ? { cx, cy } : null;
+    }
+
+    /**
+     * Chase the player target.
+     * @param {Object} target - Target {cx, cy}
+     * @param {number} dt - Delta time
+     */
+    _chasePlayer(target, dt) {
+        const mycx = this.x + (this.width || 0) / 2;
+        const mycy = this.y + (this.height || 0) / 2;
+        const dx = target.cx - mycx;
+        const dy = target.cy - mycy;
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        this.vx = nx;
+        this.vy = ny;
+        const baseSpeed = 80 * (this.speed || 1);
+        this.x += nx * baseSpeed * (dt / 1000);
+        this.y += ny * baseSpeed * (dt / 1000);
+        this._currentSpeed = Math.hypot(nx * baseSpeed, ny * baseSpeed);
+    }
+
+    /**
+     * Move with default velocity when no player target.
+     * @param {number} dt - Delta time
+     */
+    _moveDefault(dt) {
+        const speedPxPerSec = (this.speed || 1) * 60 * 0.8;
+        this.x += (this.vx || 0) * speedPxPerSec * (dt / 1000);
+        this.y += (this.vy || 0) * speedPxPerSec * (dt / 1000);
+        this._currentSpeed = Math.hypot((this.vx || 0) * speedPxPerSec, (this.vy || 0) * speedPxPerSec);
+    }
+
+    /**
+     * Clamp boss to canvas vertical bounds.
+     * @param {Object} world - World instance
+     */
+    _clampVerticalPosition(world) {
+        if (typeof window !== 'undefined' && world && world.canvas) {
+            const h = world.canvas.height;
+            this.y = Math.max(0, Math.min(h - this.height, this.y));
         }
     }
 
