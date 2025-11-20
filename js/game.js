@@ -161,7 +161,9 @@ function getSelected(name, defVal) {
     return el ? el.value : defVal;
 }
 
-/** Hide the start menu. */
+/**
+ * Hide the start menu screen.
+ */
 function hideStartMenu() {
     const ss = document.getElementById('startScreen');
     if (ss) ss.style.display = 'none';
@@ -191,7 +193,7 @@ function restoreSavedDifficulty() {
 }
 
 /**
- * Restore saved dark mode toggle states.
+ * Restore saved dark mode toggle states from localStorage.
  */
 function restoreSavedDarkMode() {
     const dark = localStorage.getItem('sharkyDarkMode') === '1';
@@ -202,7 +204,7 @@ function restoreSavedDarkMode() {
 }
 
 /**
- * Restore saved sound controls.
+ * Restore saved sound controls from localStorage.
  */
 function restoreSavedSoundControls() {
     const mt = document.getElementById('muteToggleInline');
@@ -218,7 +220,7 @@ function restoreSavedSoundControls() {
 }
 
 /**
- * Restore saved music controls.
+ * Restore saved music controls from localStorage.
  */
 function restoreSavedMusicControls() {
     const mmt = document.getElementById('musicMuteToggle');
@@ -233,9 +235,8 @@ function restoreSavedMusicControls() {
     } catch (e) {}
 }
 
-/** Show the start menu and restore last selections. */
 /**
- * Show the start menu screen.
+ * Show the start menu screen and restore saved settings.
  */
 function showStartMenu() {
     const ss = document.getElementById('startScreen');
@@ -297,7 +298,9 @@ function destroyWorld() {
     }
 }
 
-/** Create a fresh world instance and start the game. */
+/**
+ * Start the game with selected settings.
+ */
 function startGame() {
     canvas = document.getElementById('gameCanvas');
     if (!canvas) return;
@@ -463,7 +466,9 @@ function preloadSounds() {
     } catch (e) {}
 }
 
-/** Initialize UI wiring, overlays, and preload assets. */
+/**
+ * Initialize the game UI, controls, and overlays.
+ */
 function init() {
     canvas = document.getElementById('gameCanvas');
     const tbtn = document.getElementById('touchModeBtn');
@@ -515,9 +520,20 @@ function initializeOverlays() {
 
 window.init = init;
 
-/** Minimal Game Over + Highscores UI monitor and builders. */
+/**
+ * Tracks visibility state of game over and victory UI.
+ * @type {boolean}
+ */
 let _endUiVisible = false;
+/**
+ * Tracks visibility state of victory UI.
+ * @type {boolean}
+ */
 let _victoryUiVisible = false;
+/**
+ * Suppresses end overlay display until this timestamp.
+ * @type {number}
+ */
 let _suppressEndOverlayUntil = 0;
 
 /**
@@ -659,6 +675,9 @@ function handleGameOverConfirm(nameInput) {
     } catch (e) {}
 }
 
+/**
+ * Show the game over UI overlay.
+ */
 function showGameOverUI() {
     const ov = buildOverlay('gameOverUI');
     ov.innerHTML = '';
@@ -669,6 +688,9 @@ function showGameOverUI() {
     _endUiVisible = true;
 }
 
+/**
+ * Hide the game over UI overlay.
+ */
 function hideGameOverUI() {
     const ov = document.getElementById('gameOverUI');
     if (ov) ov.style.display = 'none';
@@ -763,6 +785,9 @@ function showVictoryUI() {
     _victoryUiVisible = true;
 }
 
+/**
+ * Hide the victory UI overlay.
+ */
 function hideVictoryUI() {
     const ov = document.getElementById('victoryUI');
     if (ov) ov.style.display = 'none';
@@ -895,13 +920,18 @@ function _appendHighscoreRow(list, record, index) {
     list.appendChild(row);
 }
 
+/**
+ * Hide the highscores UI overlay.
+ */
 function hideHighscoresUI() {
     const ov = document.getElementById('highscoresUI');
     if (ov) ov.style.display = 'none';
 }
 
-    /** Create Pause overlay if missing. */
-    function ensurePauseOverlay() {
+/**
+ * Create pause overlay if it doesn't exist.
+ */
+function ensurePauseOverlay() {
         if (document.getElementById('pauseOverlay')) return;
         const ov = document.createElement('div');
         ov.id = 'pauseOverlay';
@@ -915,9 +945,17 @@ function hideHighscoresUI() {
         inner.appendChild(t); inner.appendChild(btn); ov.appendChild(inner);
         document.body.appendChild(ov);
     }
-    function showPauseOverlay() { const ov = document.getElementById('pauseOverlay'); if (ov) ov.style.display = 'flex'; }
-    function hidePauseOverlay() { const ov = document.getElementById('pauseOverlay'); if (ov) ov.style.display = 'none'; }
-    window.showPauseOverlay = showPauseOverlay; window.hidePauseOverlay = hidePauseOverlay;
+
+/**
+ * Show the pause overlay.
+ */
+function showPauseOverlay() { const ov = document.getElementById('pauseOverlay'); if (ov) ov.style.display = 'flex'; }
+
+/**
+ * Hide the pause overlay.
+ */
+function hidePauseOverlay() { const ov = document.getElementById('pauseOverlay'); if (ov) ov.style.display = 'none'; }
+window.showPauseOverlay = showPauseOverlay; window.hidePauseOverlay = hidePauseOverlay;
 
     /** Create Touch Controls overlay if missing. */
     let _touchButtons = null;
@@ -1042,15 +1080,41 @@ function hideHighscoresUI() {
         wireTouchButtons(dpad, actions);
         _touchButtons = { pad: dpad.pad, act: actions.act };
     }
-    /** Touch full-screen and orientation handling state. */
-    let _noScrollActive = false;
-    let _touchResizeHandler = null;
-    let _touchOrientHandler = null;
-    let _canvasPrevStyle = null;
 
-    function isLandscape() { return (window.innerWidth || 0) >= (window.innerHeight || 0); }
+/**
+ * Tracks if no-scroll mode is active.
+ * @type {boolean}
+ */
+let _noScrollActive = false;
 
-    function ensureRotateOverlay() {
+/**
+ * Touch mode resize handler reference.
+ * @type {Function|null}
+ */
+let _touchResizeHandler = null;
+
+/**
+ * Touch mode orientation handler reference.
+ * @type {Function|null}
+ */
+let _touchOrientHandler = null;
+
+/**
+ * Saved canvas style for restoration.
+ * @type {Object|null}
+ */
+let _canvasPrevStyle = null;
+
+/**
+ * Check if device is in landscape orientation.
+ * @returns {boolean}
+ */
+function isLandscape() { return (window.innerWidth || 0) >= (window.innerHeight || 0); }
+
+/**
+ * Create rotate overlay if it doesn't exist.
+ */
+function ensureRotateOverlay() {
         if (document.getElementById('rotateOverlay')) return;
         const ov = document.createElement('div');
         ov.id = 'rotateOverlay';
@@ -1061,10 +1125,22 @@ function hideHighscoresUI() {
     const t = document.createElement('div'); t.innerText = 'Please rotate your device (landscape).'; t.style.fontSize = '20px'; t.style.marginBottom = '10px';
         inner.appendChild(t); ov.appendChild(inner); document.body.appendChild(ov);
     }
-    function showRotateOverlay() { ensureRotateOverlay(); const ov = document.getElementById('rotateOverlay'); if (ov) ov.style.display = 'flex'; }
-    function hideRotateOverlay() { const ov = document.getElementById('rotateOverlay'); if (ov) ov.style.display = 'none'; }
 
-    function setNoScroll(on) {
+/**
+ * Show the rotate device overlay.
+ */
+function showRotateOverlay() { ensureRotateOverlay(); const ov = document.getElementById('rotateOverlay'); if (ov) ov.style.display = 'flex'; }
+
+/**
+ * Hide the rotate device overlay.
+ */
+function hideRotateOverlay() { const ov = document.getElementById('rotateOverlay'); if (ov) ov.style.display = 'none'; }
+
+/**
+ * Enable or disable scroll prevention.
+ * @param {boolean} on
+ */
+function setNoScroll(on) {
         const body = document.body; const html = document.documentElement;
         if (on && !_noScrollActive) {
             _noScrollActive = true;
@@ -1078,9 +1154,17 @@ function hideHighscoresUI() {
             try { window.removeEventListener('touchmove', _preventDefaultTouch); } catch (e) {}
         }
     }
-    function _preventDefaultTouch(e) { if (window.__touchOverlayOn) { try { e.preventDefault(); } catch (err) {} } }
 
-    function saveCanvasStyle() {
+/**
+ * Prevent default touch behavior when overlay is active.
+ * @param {Event} e
+ */
+function _preventDefaultTouch(e) { if (window.__touchOverlayOn) { try { e.preventDefault(); } catch (err) {} } }
+
+/**
+ * Save current canvas style for later restoration.
+ */
+function saveCanvasStyle() {
         if (!canvas) return;
         _canvasPrevStyle = {
             position: canvas.style.position,
@@ -1091,7 +1175,11 @@ function hideHighscoresUI() {
             zIndex: canvas.style.zIndex
         };
     }
-    function restoreCanvasStyle() {
+
+/**
+ * Restore previously saved canvas style.
+ */
+function restoreCanvasStyle() {
         if (!canvas || !_canvasPrevStyle) return;
         const s = _canvasPrevStyle; _canvasPrevStyle = null;
         canvas.style.position = s.position || '';
@@ -1101,8 +1189,11 @@ function hideHighscoresUI() {
         canvas.style.height = s.height || '';
         canvas.style.zIndex = s.zIndex || '';
     }
-    /** Resize the canvas element to fill the current viewport. */
-    function resizeCanvasToViewport() {
+
+/**
+ * Resize canvas to fill the viewport.
+ */
+function resizeCanvasToViewport() {
         if (!canvas) return;
         canvas.style.position = 'fixed';
         canvas.style.left = '0'; canvas.style.top = '0';
@@ -1110,8 +1201,11 @@ function hideHighscoresUI() {
         canvas.style.zIndex = '0';
         try { canvas.width = window.innerWidth || 0; canvas.height = window.innerHeight || 0; } catch (e) {}
     }
-    /** Enter fullscreen on the document body if supported. */
-    async function enterFullscreen() {
+
+/**
+ * Enter fullscreen mode if supported.
+ */
+async function enterFullscreen() {
         try {
             const el = document.body || document.documentElement || canvas;
             if (el && el.requestFullscreen) {
@@ -1119,8 +1213,11 @@ function hideHighscoresUI() {
             }
         } catch (e) {}
     }
-    /** Exit fullscreen if currently active. */
-    async function exitFullscreen() {
+
+/**
+ * Exit fullscreen mode if active.
+ */
+async function exitFullscreen() {
         try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (e) {}
     }
     /** Attach resize/orientation listeners for touch mode. */
@@ -1138,8 +1235,11 @@ function hideHighscoresUI() {
         try { window.addEventListener('resize', _touchResizeHandler); } catch (e) {}
         try { window.addEventListener('orientationchange', _touchOrientHandler); } catch (e) {}
     }
-    /** Detach touch mode listeners. */
-    function detachTouchModeListeners() {
+
+/**
+ * Remove touch mode listeners.
+ */
+function detachTouchModeListeners() {
         try { if (_touchResizeHandler) window.removeEventListener('resize', _touchResizeHandler); } catch (e) {}
         try { if (_touchOrientHandler) window.removeEventListener('orientationchange', _touchOrientHandler); } catch (e) {}
         _touchResizeHandler = null; _touchOrientHandler = null;
