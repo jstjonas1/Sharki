@@ -989,14 +989,17 @@ function ensurePauseOverlay() {
         if (document.getElementById('pauseOverlay')) return;
         const ov = document.createElement('div');
         ov.id = 'pauseOverlay';
-        ov.style.position = 'fixed'; ov.style.left = '0'; ov.style.top = '0'; ov.style.width = '100%'; ov.style.height = '100%';
-        ov.style.display = 'none'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
-        ov.style.background = 'rgba(0,0,0,0.5)'; ov.style.zIndex = '10010'; ov.style.color = 'white';
-        const inner = document.createElement('div'); inner.style.background = '#0b2233'; inner.style.padding = '16px'; inner.style.borderRadius = '10px'; inner.style.textAlign = 'center';
-    const t = document.createElement('div'); t.innerText = 'Paused'; t.style.fontSize = '20px'; t.style.marginBottom = '10px';
-    const btn = document.createElement('button'); btn.innerText = 'Resume'; btn.style.padding = '8px 12px';
+        const inner = document.createElement('div');
+        inner.className = 'pause-inner';
+        const t = document.createElement('div');
+        t.className = 'pause-title';
+        t.innerText = 'Paused';
+        const btn = document.createElement('button');
+        btn.innerText = 'Resume';
         btn.addEventListener('click', () => { try { if (world) world.paused = false; } catch(e){} hidePauseOverlay(); });
-        inner.appendChild(t); inner.appendChild(btn); ov.appendChild(inner);
+        inner.appendChild(t);
+        inner.appendChild(btn);
+        ov.appendChild(inner);
         document.body.appendChild(ov);
     }
 
@@ -1022,18 +1025,10 @@ window.showPauseOverlay = showPauseOverlay; window.hidePauseOverlay = hidePauseO
      */
     function createTouchButton(label, x, y) {
         const b = document.createElement('button');
+        b.className = 'touch-button';
         b.innerText = label;
-        b.style.position = 'absolute';
         b.style.left = x + 'px';
         b.style.top = y + 'px';
-        b.style.opacity = '0.75';
-        b.style.borderRadius = '50%';
-        b.style.width = '60px';
-        b.style.height = '60px';
-        b.style.border = '1px solid rgba(255,255,255,0.2)';
-        b.style.background = 'rgba(0,0,0,0.35)';
-        b.style.color = 'white';
-        b.style.touchAction = 'none';
         return b;
     }
 
@@ -1064,12 +1059,7 @@ window.showPauseOverlay = showPauseOverlay; window.hidePauseOverlay = hidePauseO
      */
     function createDpadButtons() {
         const pad = document.createElement('div');
-        pad.style.position = 'absolute';
-        pad.style.left = '16px';
-        pad.style.bottom = '16px';
-        pad.style.width = '180px';
-        pad.style.height = '180px';
-        pad.style.pointerEvents = 'auto';
+        pad.className = 'touch-dpad';
         const bUp = createTouchButton('↑', 60, 0);
         const bDown = createTouchButton('↓', 60, 120);
         const bLeft = createTouchButton('←', 0, 60);
@@ -1084,16 +1074,9 @@ window.showPauseOverlay = showPauseOverlay; window.hidePauseOverlay = hidePauseO
      */
     function createActionButtons() {
         const act = document.createElement('div');
-        act.style.position = 'absolute';
-        act.style.right = '16px';
-        act.style.bottom = '16px';
-        act.style.width = '200px';
-        act.style.height = '120px';
-        act.style.pointerEvents = 'auto';
+        act.className = 'touch-actions';
         const bBubble = createTouchButton('Bubble', 60, 0);
-        bBubble.style.borderRadius = '12px';
-        bBubble.style.width = '100px';
-        bBubble.style.height = '60px';
+        bBubble.classList.add('touch-button-bubble');
         act.appendChild(bBubble);
         return { bBubble, act };
     }
@@ -1118,17 +1101,6 @@ function ensureTouchOverlay() {
         if (document.getElementById('touchOverlay')) return;
         const ov = document.createElement('div');
         ov.id = 'touchOverlay';
-        ov.style.position = 'fixed';
-        ov.style.left = '0';
-        ov.style.top = '0';
-        ov.style.width = '100%';
-        ov.style.height = '100%';
-        ov.style.pointerEvents = 'none';
-        ov.style.display = 'none';
-        ov.style.zIndex = '9000';
-        ov.style.webkitTouchCallout = 'none';
-        ov.style.webkitUserSelect = 'none';
-        ov.style.userSelect = 'none';
         const dpad = createDpadButtons();
         const actions = createActionButtons();
         ov.appendChild(dpad.pad);
@@ -1175,12 +1147,14 @@ function ensureRotateOverlay() {
         if (document.getElementById('rotateOverlay')) return;
         const ov = document.createElement('div');
         ov.id = 'rotateOverlay';
-        ov.style.position = 'fixed'; ov.style.left = '0'; ov.style.top = '0'; ov.style.width = '100%'; ov.style.height = '100%';
-        ov.style.display = 'none'; ov.style.alignItems = 'center'; ov.style.justifyContent = 'center';
-        ov.style.background = 'rgba(0,0,0,0.8)'; ov.style.zIndex = '10020'; ov.style.color = 'white'; ov.style.pointerEvents = 'auto';
-        const inner = document.createElement('div'); inner.style.textAlign = 'center'; inner.style.maxWidth = '80vw';
-    const t = document.createElement('div'); t.innerText = 'Please rotate your device (landscape).'; t.style.fontSize = '20px'; t.style.marginBottom = '10px';
-        inner.appendChild(t); ov.appendChild(inner); document.body.appendChild(ov);
+        const inner = document.createElement('div');
+        inner.className = 'rotate-overlay-inner';
+        const t = document.createElement('div');
+        t.className = 'rotate-overlay-text';
+        t.innerText = 'Please rotate your device (landscape).';
+        inner.appendChild(t);
+        ov.appendChild(inner);
+        document.body.appendChild(ov);
     }
 
 /**
@@ -1447,15 +1421,12 @@ function detachTouchModeListeners() {
      */
     function createRotateIcon() {
         const icon = document.createElement('div');
+        icon.className = 'rotate-icon';
         icon.innerHTML = `
             <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                 <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
                 <path d="M12 18h.01"/>
             </svg>
-        `;
-        icon.style.cssText = `
-            animation: rotateDevice 2s infinite;
-            margin-bottom: 20px;
         `;
         return icon;
     }
@@ -1466,22 +1437,9 @@ function detachTouchModeListeners() {
      */
     function createRotateText() {
         const text = document.createElement('div');
-        text.innerHTML = '<h2 style="margin: 0 0 10px; font-size: 24px;">Bitte drehe dein Gerät</h2><p style="margin: 0; font-size: 16px; opacity: 0.8;">Für das beste Spielerlebnis nutze bitte den Querformat-Modus</p>';
+        text.className = 'rotate-text';
+        text.innerHTML = '<h2>Bitte drehe dein Gerät</h2><p>Für das beste Spielerlebnis nutze bitte den Querformat-Modus</p>';
         return text;
-    }
-
-    /**
-     * Inject rotate animation CSS.
-     */
-    function injectRotateAnimation() {
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes rotateDevice {
-                0%, 100% { transform: rotate(0deg); }
-                50% { transform: rotate(90deg); }
-            }
-        `;
-        document.head.appendChild(style);
     }
 
     /**
@@ -1491,33 +1449,13 @@ function detachTouchModeListeners() {
         if (document.getElementById('mobileRotatePrompt')) return;
         const overlay = document.createElement('div');
         overlay.id = 'mobileRotatePrompt';
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            flex-direction: column;
-            padding: 20px;
-            box-sizing: border-box;
-        `;
         const content = document.createElement('div');
-        content.style.cssText = `
-            text-align: center;
-            color: white;
-            font-family: Arial, sans-serif;
-        `;
+        content.className = 'rotate-prompt-content';
         const icon = createRotateIcon();
         const text = createRotateText();
         content.appendChild(icon);
         content.appendChild(text);
         overlay.appendChild(content);
-        injectRotateAnimation();
         document.body.appendChild(overlay);
     }
     

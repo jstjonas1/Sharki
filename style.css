@@ -257,3 +257,155 @@ button:disabled, input[disabled] {
     padding: 8px 12px;
     margin-top: 10px;
 }
+
+/* Mobile Rotate Prompt styles */
+#mobileRotatePrompt {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    flex-direction: column;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.rotate-prompt-content {
+    text-align: center;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+.rotate-icon {
+    animation: rotateDevice 2s infinite;
+    margin-bottom: 20px;
+}
+
+.rotate-text h2 {
+    margin: 0 0 10px;
+    font-size: 24px;
+}
+
+.rotate-text p {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.8;
+}
+
+@keyframes rotateDevice {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+}
+
+/* Pause Overlay styles */
+#pauseOverlay {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10010;
+    color: white;
+}
+
+.pause-inner {
+    background: #0b2233;
+    padding: 16px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.pause-title {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.pause-inner button {
+    padding: 8px 12px;
+}
+
+/* Rotate Device Overlay styles */
+#rotateOverlay {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10020;
+    color: white;
+    pointer-events: auto;
+}
+
+.rotate-overlay-inner {
+    text-align: center;
+    max-width: 80vw;
+}
+
+.rotate-overlay-text {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+/* Touch Overlay styles */
+#touchOverlay {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+    z-index: 9000;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.touch-button {
+    position: absolute;
+    opacity: 0.75;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.35);
+    color: white;
+    touch-action: none;
+}
+
+.touch-button-bubble {
+    border-radius: 12px;
+    width: 100px;
+    height: 60px;
+}
+
+.touch-dpad {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    width: 180px;
+    height: 180px;
+    pointer-events: auto;
+}
+
+.touch-actions {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 200px;
+    height: 120px;
+    pointer-events: auto;
+}
