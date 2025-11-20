@@ -609,66 +609,35 @@ function showHowToOverlay() {
  */
 function createGameOverContent() {
     const inner = document.createElement('div');
-    inner.style.background = '#0b2233';
-    inner.style.padding = '16px';
-    inner.style.borderRadius = '10px';
-    inner.style.width = 'min(380px,92vw)';
-    inner.style.boxSizing = 'border-box';
-    inner.style.textAlign = 'center';
-    const score = world ? (world.score || 0) : 0;
-    const secs = world ? Math.round((world._finalElapsedMs || world.elapsedMs || 0) / 1000) : 0;
-    const diff = world ? (world.difficulty || 'normal') : 'normal';
-    const title = document.createElement('h2');
-    title.innerText = 'Game Over';
-    title.style.margin = '0 0 8px';
-    const deadImg = document.createElement('img');
-    deadImg.src = './assets/img/sharki/1sharkie/6dead/1poisoned/9.png';
-    deadImg.alt = 'Sharkie Game Over';
-    deadImg.style.display = 'block';
-    deadImg.style.margin = '0 auto 8px';
-    deadImg.style.width = '120px';
-    deadImg.style.height = 'auto';
-    const info = document.createElement('div');
-    info.style.margin = '0 0 12px';
-    info.innerText = `Score: ${score} • Time: ${secs}s • ${diff}`;
-    const nameWrap = document.createElement('div');
-    nameWrap.style.margin = '0 0 10px';
-    nameWrap.style.textAlign = 'left';
-    const nameLbl = document.createElement('label');
-    nameLbl.innerText = 'Name for High Score:';
-    nameLbl.style.display = 'block';
-    nameLbl.style.marginBottom = '6px';
-    const nameInput = document.createElement('input');
-    nameInput.id = 'playerName';
-    nameInput.type = 'text';
-    nameInput.maxLength = 24;
-    nameInput.style.width = '100%';
-    nameInput.style.padding = '8px';
-    nameInput.style.borderRadius = '6px';
-    nameInput.style.border = '1px solid rgba(255,255,255,0.1)';
-    nameInput.style.background = 'transparent';
-    nameInput.style.color = 'white';
-    try {
-        const prev = localStorage.getItem('sharkyPlayerName');
-        if (prev) nameInput.value = prev;
-    } catch (e) {}
-    nameWrap.appendChild(nameLbl);
-    nameWrap.appendChild(nameInput);
-    const btnRow = document.createElement('div');
-    btnRow.style.display = 'flex';
-    btnRow.style.gap = '10px';
-    btnRow.style.justifyContent = 'center';
-    btnRow.style.flexWrap = 'wrap';
-    const confirmBtn = document.createElement('button');
-    confirmBtn.innerText = 'Confirm';
-    confirmBtn.style.padding = '8px 12px';
-    btnRow.appendChild(confirmBtn);
-    inner.appendChild(title);
-    inner.appendChild(deadImg);
-    inner.appendChild(info);
-    inner.appendChild(nameWrap);
-    inner.appendChild(btnRow);
+    inner.className = 'gameover-inner';
+    const { score, secs, diff } = _getGameStats();
+    _appendGameOverElements(inner, score, secs, diff);
+    const nameInput = inner.querySelector('.gameover-name-input');
+    const confirmBtn = inner.querySelector('button');
     return { inner, nameInput, confirmBtn };
+}
+
+/**
+ * Append game over UI elements to container.
+ * @param {HTMLDivElement} container - Container element
+ * @param {number} score - Player score
+ * @param {number} secs - Time in seconds
+ * @param {string} diff - Difficulty level
+ */
+function _appendGameOverElements(container, score, secs, diff) {
+    container.innerHTML = `
+        <h2>Game Over</h2>
+        <img class="gameover-img" src="./assets/img/sharki/1sharkie/6dead/1poisoned/9.png" alt="Sharkie Game Over">
+        <div class="gameover-info">Score: ${score} • Time: ${secs}s • ${diff}</div>
+        <div class="gameover-name-wrap">
+            <label class="gameover-name-label">Name for High Score:</label>
+            <input class="gameover-name-input" id="playerName" type="text" maxlength="24">
+        </div>
+        <div class="gameover-btn-row">
+            <button>Confirm</button>
+        </div>
+    `;
+    _restoreSavedPlayerName(container.querySelector('.gameover-name-input'));
 }
 
 /**
@@ -712,66 +681,57 @@ function hideGameOverUI() {
  */
 function createVictoryContent() {
     const inner = document.createElement('div');
-    inner.style.background = '#0b2233';
-    inner.style.padding = '16px';
-    inner.style.borderRadius = '10px';
-    inner.style.width = 'min(380px,92vw)';
-    inner.style.boxSizing = 'border-box';
-    inner.style.textAlign = 'center';
+    inner.className = 'victory-inner';
+    const { score, secs, diff } = _getGameStats();
+    _appendVictoryElements(inner, score, secs, diff);
+    const nameInput = inner.querySelector('.victory-name-input');
+    const confirmBtn = inner.querySelector('button');
+    return { inner, nameInput, confirmBtn };
+}
+
+/**
+ * Get current game statistics.
+ * @returns {{score: number, secs: number, diff: string}}
+ */
+function _getGameStats() {
     const score = world ? (world.score || 0) : 0;
     const secs = world ? Math.round((world._finalElapsedMs || world.elapsedMs || 0) / 1000) : 0;
     const diff = world ? (world.difficulty || 'normal') : 'normal';
-    const title = document.createElement('h2');
-    title.innerText = 'You Win!';
-    title.style.margin = '0 0 8px';
-    const idleImg = document.createElement('img');
-    idleImg.src = './assets/img/sharki/1sharkie/1idle/1.png';
-    idleImg.alt = 'Sharkie Victory';
-    idleImg.style.display = 'block';
-    idleImg.style.margin = '0 auto 8px';
-    idleImg.style.width = '120px';
-    idleImg.style.height = 'auto';
-    const info = document.createElement('div');
-    info.style.margin = '0 0 12px';
-    info.innerText = `Score: ${score} • Time: ${secs}s • ${diff}`;
-    const nameWrap = document.createElement('div');
-    nameWrap.style.margin = '0 0 10px';
-    nameWrap.style.textAlign = 'left';
-    const nameLbl = document.createElement('label');
-    nameLbl.innerText = 'Name for High Score:';
-    nameLbl.style.display = 'block';
-    nameLbl.style.marginBottom = '6px';
-    const nameInput = document.createElement('input');
-    nameInput.id = 'playerNameVictory';
-    nameInput.type = 'text';
-    nameInput.maxLength = 24;
-    nameInput.style.width = '100%';
-    nameInput.style.padding = '8px';
-    nameInput.style.borderRadius = '6px';
-    nameInput.style.border = '1px solid rgba(255,255,255,0.1)';
-    nameInput.style.background = 'transparent';
-    nameInput.style.color = 'white';
+    return { score, secs, diff };
+}
+
+/**
+ * Append victory UI elements to container.
+ * @param {HTMLDivElement} container - Container element
+ * @param {number} score - Player score
+ * @param {number} secs - Time in seconds
+ * @param {string} diff - Difficulty level
+ */
+function _appendVictoryElements(container, score, secs, diff) {
+    container.innerHTML = `
+        <h2>You Win!</h2>
+        <img class="victory-img" src="./assets/img/sharki/1sharkie/1idle/1.png" alt="Sharkie Victory">
+        <div class="victory-info">Score: ${score} • Time: ${secs}s • ${diff}</div>
+        <div class="victory-name-wrap">
+            <label class="victory-name-label">Name for High Score:</label>
+            <input class="victory-name-input" id="playerNameVictory" type="text" maxlength="24">
+        </div>
+        <div class="victory-btn-row">
+            <button>Confirm</button>
+        </div>
+    `;
+    _restoreSavedPlayerName(container.querySelector('.victory-name-input'));
+}
+
+/**
+ * Restore saved player name from localStorage.
+ * @param {HTMLInputElement} input - Name input element
+ */
+function _restoreSavedPlayerName(input) {
     try {
         const prev = localStorage.getItem('sharkyPlayerName');
-        if (prev) nameInput.value = prev;
+        if (prev) input.value = prev;
     } catch (e) {}
-    nameWrap.appendChild(nameLbl);
-    nameWrap.appendChild(nameInput);
-    const btnRow = document.createElement('div');
-    btnRow.style.display = 'flex';
-    btnRow.style.gap = '10px';
-    btnRow.style.justifyContent = 'center';
-    btnRow.style.flexWrap = 'wrap';
-    const confirmBtn = document.createElement('button');
-    confirmBtn.innerText = 'Confirm';
-    confirmBtn.style.padding = '8px 12px';
-    btnRow.appendChild(confirmBtn);
-    inner.appendChild(title);
-    inner.appendChild(idleImg);
-    inner.appendChild(info);
-    inner.appendChild(nameWrap);
-    inner.appendChild(btnRow);
-    return { inner, nameInput, confirmBtn };
 }
 
 /**
@@ -809,71 +769,130 @@ function hideVictoryUI() {
     _victoryUiVisible = false;
 }
 
+/**
+ * Show highscores overlay with top scores.
+ */
 function showHighscoresUI() {
     const ov = buildOverlay('highscoresUI');
     ov.innerHTML = '';
+    _appendHighscoresContent(ov);
+    ov.style.display = 'flex';
+}
+
+/**
+ * Append highscores content to overlay.
+ * @param {HTMLElement} ov - Overlay element
+ */
+function _appendHighscoresContent(ov) {
     const inner = document.createElement('div');
-    inner.style.background = '#07232b'; inner.style.padding = '16px'; inner.style.borderRadius = '10px'; inner.style.width = 'min(420px,92vw)'; inner.style.boxSizing = 'border-box';
-    const title = document.createElement('h3'); title.innerText = 'High Scores'; title.style.margin = '0 0 10px';
-    const list = document.createElement('div'); list.id = 'hsList'; list.style.maxHeight = '60vh'; list.style.overflowY = 'auto'; list.style.marginBottom = '12px';
-    const actions = document.createElement('div'); actions.style.display = 'flex'; actions.style.gap = '10px'; actions.style.justifyContent = 'center';
-    const restart = document.createElement('button'); restart.innerText = 'Restart'; restart.style.padding = '8px 12px';
-    const toMenu = document.createElement('button'); toMenu.innerText = 'Back to Menu'; toMenu.style.padding = '8px 12px';
-    actions.appendChild(restart); actions.appendChild(toMenu);
-    inner.appendChild(title); inner.appendChild(list); inner.appendChild(actions);
+    inner.className = 'highscores-inner';
+    inner.innerHTML = `
+        <h3>High Scores</h3>
+        <div id="hsList" class="highscores-list"></div>
+        <div class="highscores-actions">
+            <button id="hsRestartBtn">Restart</button>
+            <button id="hsMenuBtn">Back to Menu</button>
+        </div>
+    `;
     ov.appendChild(inner);
-    restart.addEventListener('click', () => {
-        try { hideHighscoresUI(); } catch (e) {}
-        try { hideGameOverUI(); } catch (e) {}
-        try { hideVictoryUI(); } catch (e) {}
-        try { _suppressEndOverlayUntil = Date.now() + 600; } catch (e) {}
-        try { if (world) { world.gameOver = false; world.victory = false; world.restartGame(); } } catch (e) {}
-    });
-    toMenu.addEventListener('click', () => {
-      
-        _menuOpen = true;
-        try { if (world) { world.gameOver = false; world.victory = false; world.running = false; } } catch (e) {}
-        try { _suppressEndOverlayUntil = Date.now() + 600; } catch (e) {}
-        try { hideHighscoresUI(); } catch (e) {}
-        try { hideGameOverUI(); } catch (e) {}
-        try { hideVictoryUI(); } catch (e) {}
-        try { showStartMenu(); } catch (e) {}
-    });
+    _attachHighscoresHandlers();
+    _populateHighscoresList();
+}
+
+/**
+ * Attach event handlers to highscores buttons.
+ */
+function _attachHighscoresHandlers() {
+    document.getElementById('hsRestartBtn').addEventListener('click', _handleHighscoresRestart);
+    document.getElementById('hsMenuBtn').addEventListener('click', _handleHighscoresToMenu);
+}
+
+/**
+ * Handle highscores restart button click.
+ */
+function _handleHighscoresRestart() {
+    hideHighscoresUI();
+    hideGameOverUI();
+    hideVictoryUI();
+    _suppressEndOverlayUntil = Date.now() + 600;
+    if (world) { world.gameOver = false; world.victory = false; world.restartGame(); }
+}
+
+/**
+ * Handle highscores back to menu button click.
+ */
+function _handleHighscoresToMenu() {
+    _menuOpen = true;
+    if (world) { world.gameOver = false; world.victory = false; world.running = false; }
+    _suppressEndOverlayUntil = Date.now() + 600;
+    hideHighscoresUI();
+    hideGameOverUI();
+    hideVictoryUI();
+    showStartMenu();
+}
+
+/**
+ * Populate highscores list with data.
+ */
+function _populateHighscoresList() {
+    const list = document.getElementById('hsList');
+    if (!list) return;
+    const data = _getSortedHighscores();
+    list.innerHTML = '';
+    if (!data.length) {
+        list.innerHTML = '<div class="highscore-empty">-</div>';
+    } else {
+        data.forEach((r, i) => _appendHighscoreRow(list, r, i));
+    }
+}
+
+/**
+ * Get sorted highscores data.
+ * @returns {Array} Sorted highscores
+ */
+function _getSortedHighscores() {
     try {
-        let arr = (typeof getTopHighscores === 'function') ? (getTopHighscores(10, false) || []) : [];
-        list.innerHTML = '';
-      
+        const arr = (typeof getTopHighscores === 'function') ? (getTopHighscores(10, false) || []) : [];
         const data = Array.isArray(arr) ? arr.slice() : [];
         data.sort((a,b) => {
-            const as = (a && (a.score ?? a.finalScore)) || 0; const bs = (b && (b.score ?? b.finalScore)) || 0;
+            const as = (a && (a.score ?? a.finalScore)) || 0;
+            const bs = (b && (b.score ?? b.finalScore)) || 0;
             const at = Math.max(0, Math.round(((a && a.timeMs) || 0) / 1000));
             const bt = Math.max(0, Math.round(((b && b.timeMs) || 0) / 1000));
-          
             const ae = as - at * 10;
             const be = bs - bt * 10;
             if (be !== ae) return be - ae;
-          
             return (a.timeMs || 0) - (b.timeMs || 0);
         });
-        if (!data.length) {
-            const dash = document.createElement('div'); dash.style.textAlign = 'center'; dash.style.opacity = '0.8'; dash.innerText = '-'; list.appendChild(dash);
-        } else {
-            data.forEach((r, i) => {
-                const row = document.createElement('div'); row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.padding = '6px 4px'; row.style.borderBottom = '1px solid rgba(255,255,255,0.06)';
-                const left = document.createElement('div'); left.innerText = `${i+1}. ${r.name || 'Player'}`; left.style.fontWeight = '600';
-                const right = document.createElement('div'); right.style.fontFamily = 'monospace';
-                try {
-                    const secs = Math.max(0, Math.round((r.timeMs || 0) / 1000));
-                    const mm = Math.floor(secs / 60); const ss = String(secs % 60).padStart(2, '0');
-                    right.innerText = `${r.score || 0} • ${mm}:${ss}`;
-                } catch (_) {
-                    right.innerText = `${r.score || 0}`;
-                }
-                row.appendChild(left); row.appendChild(right); list.appendChild(row);
-            });
-        }
-    } catch (e) {}
-    ov.style.display = 'flex';
+        return data;
+    } catch (e) { return []; }
+}
+
+/**
+ * Append a highscore row to the list.
+ * @param {HTMLElement} list - List container
+ * @param {Object} record - Highscore record
+ * @param {number} index - Row index
+ */
+function _appendHighscoreRow(list, record, index) {
+    const row = document.createElement('div');
+    row.className = 'highscore-row';
+    const left = document.createElement('div');
+    left.className = 'highscore-row-left';
+    left.innerText = `${index+1}. ${record.name || 'Player'}`;
+    const right = document.createElement('div');
+    right.className = 'highscore-row-right';
+    try {
+        const secs = Math.max(0, Math.round((record.timeMs || 0) / 1000));
+        const mm = Math.floor(secs / 60);
+        const ss = String(secs % 60).padStart(2, '0');
+        right.innerText = `${record.score || 0} • ${mm}:${ss}`;
+    } catch (_) {
+        right.innerText = `${record.score || 0}`;
+    }
+    row.appendChild(left);
+    row.appendChild(right);
+    list.appendChild(row);
 }
 
 function hideHighscoresUI() {

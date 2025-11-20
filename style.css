@@ -124,3 +124,108 @@ button:disabled, input[disabled] {
     /* Ensure overlay itself can scroll */
     #startScreen { overflow: auto; }
 }
+
+/* Victory and Game Over overlay styles */
+.victory-inner, .gameover-inner {
+    background: #0b2233;
+    padding: 16px;
+    border-radius: 10px;
+    width: min(380px, 92vw);
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.victory-inner h2, .gameover-inner h2 {
+    margin: 0 0 8px;
+}
+
+.victory-img, .gameover-img {
+    display: block;
+    margin: 0 auto 8px;
+    width: 120px;
+    height: auto;
+}
+
+.victory-info, .gameover-info {
+    margin: 0 0 12px;
+}
+
+.victory-name-wrap, .gameover-name-wrap {
+    margin: 0 0 10px;
+    text-align: left;
+}
+
+.victory-name-label, .gameover-name-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.victory-name-input, .gameover-name-input {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: transparent;
+    color: white;
+    box-sizing: border-box;
+}
+
+.victory-btn-row, .gameover-btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.victory-btn-row button, .gameover-btn-row button {
+    padding: 8px 12px;
+}
+
+/* Highscores UI styles */
+.highscores-inner {
+    background: #07232b;
+    padding: 16px;
+    border-radius: 10px;
+    width: min(420px, 92vw);
+    box-sizing: border-box;
+}
+
+.highscores-inner h3 {
+    margin: 0 0 10px;
+}
+
+.highscores-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.highscores-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.highscores-actions button {
+    padding: 8px 12px;
+}
+
+.highscore-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.highscore-row-left {
+    font-weight: 600;
+}
+
+.highscore-row-right {
+    font-family: monospace;
+}
+
+.highscore-empty {
+    text-align: center;
+    opacity: 0.8;
+}
