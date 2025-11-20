@@ -229,3 +229,31 @@ button:disabled, input[disabled] {
     text-align: center;
     opacity: 0.8;
 }
+
+/* How To Overlay styles */
+.howto-inner {
+    background: #0b2233;
+    padding: 16px;
+    border-radius: 10px;
+    width: min(560px, 92vw);
+    box-sizing: border-box;
+    color: white;
+    line-height: 1.45;
+}
+
+.howto-inner h2 {
+    margin-top: 0;
+}
+
+.howto-inner ul {
+    padding-left: 18px;
+}
+
+.howto-close {
+    text-align: center;
+}
+
+.howto-close button {
+    padding: 8px 12px;
+    margin-top: 10px;
+}

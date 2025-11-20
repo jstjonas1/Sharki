@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Main canvas element reference.
  * @type {HTMLCanvasElement|null}
  */
@@ -592,31 +592,38 @@ function buildOverlay(id) {
     return el;
 }
 
+/**
+ * Show the how to play overlay with game instructions.
+ */
 function showHowToOverlay() {
     const ov = buildOverlay('howToUI');
     ov.innerHTML = '';
     const inner = document.createElement('div');
-    inner.style.background = '#0b2233';
-    inner.style.padding = '16px';
-    inner.style.borderRadius = '10px';
-    inner.style.width = 'min(560px,92vw)';
-    inner.style.boxSizing = 'border-box';
-    inner.style.color = 'white';
-    inner.style.lineHeight = '1.45';
-    const title = document.createElement('h2'); title.textContent = 'How to play'; title.style.marginTop = '0';
-    const ul = document.createElement('ul'); ul.style.paddingLeft = '18px';
-    const li1 = document.createElement('li'); li1.textContent = 'Move with Arrow keys or WASD.';
-    const li2 = document.createElement('li'); li2.textContent = 'Shoot a bubble with F (or the on-screen button). Each shot costs 0.5% of your current points.';
-    const li3 = document.createElement('li'); li3.textContent = 'You can only eat fish that are smaller or the same size as you. Touching a bigger fish means Game Over.';
-    const li4 = document.createElement('li'); li4.textContent = 'When the progress bar reaches 100%, the Boss appears. Defeat it by shooting bubbles and don’t get hit.';
-    ul.appendChild(li1); ul.appendChild(li2); ul.appendChild(li3); ul.appendChild(li4);
-    const close = document.createElement('div');
-    const btn = document.createElement('button'); btn.textContent = 'Close'; btn.style.padding = '8px 12px'; btn.style.marginTop = '10px';
-    btn.addEventListener('click', () => { ov.style.display = 'none'; });
-    close.appendChild(btn);
-    inner.appendChild(title); inner.appendChild(ul); inner.appendChild(close);
+    inner.className = 'howto-inner';
+    inner.innerHTML = _getHowToContent();
     ov.appendChild(inner);
+    const closeBtn = inner.querySelector('button');
+    if (closeBtn) closeBtn.addEventListener('click', () => { ov.style.display = 'none'; });
     ov.style.display = 'flex';
+}
+
+/**
+ * Get HTML content for how to play overlay.
+ * @returns {string}
+ */
+function _getHowToContent() {
+    return `
+        <h2>How to play</h2>
+        <ul>
+            <li>Move with Arrow keys or WASD.</li>
+            <li>Shoot a bubble with F (or the on-screen button). Each shot costs 0.5% of your current points.</li>
+            <li>You can only eat fish that are smaller or the same size as you. Touching a bigger fish means Game Over.</li>
+            <li>When the progress bar reaches 100%, the Boss appears. Defeat it by shooting bubbles and don't get hit.</li>
+        </ul>
+        <div class="howto-close">
+            <button>Close</button>
+        </div>
+    `;
 }
 
 /**
