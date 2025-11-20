@@ -44,16 +44,32 @@ const SFX = (() => {
             node.play().catch(() => {});
         } catch (e) {}
     }
+    /**
+     * Set the master volume for all sound effects.
+     * @param {number} v Volume level in range [0,1].
+     */
     function setVolume(v) {
         const nv = (typeof v === 'number') ? v : 1;
         state.volume = Math.max(0, Math.min(1, nv));
         try { localStorage.setItem('sharkyVolume', String(Math.round(state.volume * 100))); } catch (_) {}
     }
+    /**
+     * Mute or unmute all sound effects.
+     * @param {boolean} m True to mute, false to unmute.
+     */
     function setMuted(m) {
         state.muted = !!m;
         try { localStorage.setItem('sharkyMuted', state.muted ? '1' : '0'); } catch (_) {}
     }
+    /**
+     * Get the current master volume level.
+     * @returns {number} Volume in range [0,1].
+     */
     function getVolume() { return Math.max(0, Math.min(1, state.volume || 0)); }
+    /**
+     * Check if sound effects are currently muted.
+     * @returns {boolean}
+     */
     function isMuted() { return !!state.muted; }
     
     try {
@@ -74,6 +90,10 @@ const BGM = (() => {
     let audio = null;
     const state = { volume: 1, muted: false, started: false, _resumeHooked: false };
     const SRC = './audio/music.mp3';
+    /**
+     * Ensure audio element is created and configured.
+     * @private
+     */
     function _ensureAudio() {
         if (!audio) {
             try {
@@ -84,7 +104,15 @@ const BGM = (() => {
             } catch (e) { audio = null; }
         }
     }
+    /**
+     * Apply current volume and mute settings to audio element.
+     * @private
+     */
     function _applyVolume() { if (audio) audio.volume = state.muted ? 0 : Math.max(0, Math.min(1, state.volume || 0)); }
+    /**
+     * Ensure background music has started playing.
+     * @async
+     */
     async function ensureStarted() {
         try {
             _ensureAudio(); if (!audio) return;
@@ -93,19 +121,38 @@ const BGM = (() => {
             state.started = true;
         } catch (e) { /* likely autoplay blocked */ }
     }
+    /**
+     * Set the background music volume.
+     * @param {number} v Volume level in range [0,1].
+     */
     function setVolume(v) {
         const nv = (typeof v === 'number') ? v : 1;
         state.volume = Math.max(0, Math.min(1, nv));
         try { localStorage.setItem('sharkyMusicVolume', String(Math.round(state.volume * 100))); } catch (_) {}
         _applyVolume();
     }
+    /**
+     * Mute or unmute background music.
+     * @param {boolean} m True to mute, false to unmute.
+     */
     function setMuted(m) {
         state.muted = !!m;
         try { localStorage.setItem('sharkyMusicMuted', state.muted ? '1' : '0'); } catch (_) {}
         _applyVolume();
     }
+    /**
+     * Check if background music is currently muted.
+     * @returns {boolean}
+     */
     function isMuted() { return !!state.muted; }
+    /**
+     * Get the current background music volume level.
+     * @returns {number} Volume in range [0,1].
+     */
     function getVolume() { return Math.max(0, Math.min(1, state.volume || 0)); }
+    /**
+     * Hook event listeners to auto-resume music on user interaction.
+     */
     function hookAutoResume() {
         if (state._resumeHooked) return; state._resumeHooked = true;
         const one = async () => {
@@ -1064,7 +1111,10 @@ window.showPauseOverlay = showPauseOverlay; window.hidePauseOverlay = hidePauseO
         attachTouchPress(actions.bBubble, () => { try { if (world && world.character) world.character.shootBubble(); } catch (e) {} }, () => {});
     }
 
-    function ensureTouchOverlay() {
+/**
+ * Create touch overlay if it doesn't exist.
+ */
+function ensureTouchOverlay() {
         if (document.getElementById('touchOverlay')) return;
         const ov = document.createElement('div');
         ov.id = 'touchOverlay';
@@ -1227,8 +1277,11 @@ async function enterFullscreen() {
 async function exitFullscreen() {
         try { if (document.fullscreenElement) await document.exitFullscreen(); } catch (e) {}
     }
-    /** Attach resize/orientation listeners for touch mode. */
-    function attachTouchModeListeners() {
+
+/**
+ * Attach resize and orientation listeners for touch mode.
+ */
+function attachTouchModeListeners() {
         if (_touchResizeHandler || _touchOrientHandler) return;
         _touchResizeHandler = () => {
             if (!window.__touchOverlayOn) return;
