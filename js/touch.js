@@ -222,10 +222,7 @@ function restoreCanvasStyle() {
  */
 function resizeCanvasToViewport() {
     const canvas = window.canvas || document.getElementById('gameCanvas');
-    if (!canvas) {
-        console.log('Canvas not found for resize');
-        return;
-    }
+    if (!canvas) return;
     canvas.style.position = 'fixed';
     canvas.style.left = '0';
     canvas.style.top = '0';
@@ -235,10 +232,7 @@ function resizeCanvasToViewport() {
     try {
         canvas.width = window.innerWidth || 0;
         canvas.height = window.innerHeight || 0;
-        console.log(`Canvas resized to: ${canvas.width}x${canvas.height}`);
-    } catch (e) {
-        console.log('Canvas resize error:', e);
-    }
+    } catch (e) {}
 }
 
 /**
@@ -258,9 +252,7 @@ async function enterFullscreen() {
         } else if (el.msRequestFullscreen) {
             await el.msRequestFullscreen();
         }
-    } catch (e) {
-        console.log('Fullscreen not available or blocked:', e.message);
-    }
+    } catch (e) {}
 }
 
 /**
@@ -280,9 +272,7 @@ async function exitFullscreen() {
                 await document.msExitFullscreen();
             }
         }
-    } catch (e) {
-        console.log('Exit fullscreen failed:', e.message);
-    }
+    } catch (e) {}
 }
 
 /**
@@ -319,10 +309,7 @@ function detachTouchModeListeners() {
  * Enable touch overlay mode.
  */
 async function enableTouchMode() {
-    if (!hasTouchCapability()) {
-        console.log('Touch mode not available: no touch capability detected');
-        return;
-    }
+    if (!hasTouchCapability()) return;
     setNoScroll(true);
     saveCanvasStyle();
     resizeCanvasToViewport();
@@ -372,7 +359,6 @@ function _isTouchModeAllowed(on) {
  */
 async function setTouchOverlayOn(on) {
     if (!_isTouchModeAllowed(on)) {
-        console.log('Cannot enable touch mode: no touch capability and not mobile screen');
         window.__touchOverlayOn = false;
         try { const t = document.getElementById('touchToggle'); if (t) t.checked = false; } catch (e) {}
         return;
