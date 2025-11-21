@@ -221,17 +221,24 @@ function restoreCanvasStyle() {
  * Resize canvas to fill the viewport.
  */
 function resizeCanvasToViewport() {
-    if (!window.canvas) return;
-    window.canvas.style.position = 'fixed';
-    window.canvas.style.left = '0';
-    window.canvas.style.top = '0';
-    window.canvas.style.width = '100vw';
-    window.canvas.style.height = '100vh';
-    window.canvas.style.zIndex = '0';
+    const canvas = window.canvas || document.getElementById('gameCanvas');
+    if (!canvas) {
+        console.log('Canvas not found for resize');
+        return;
+    }
+    canvas.style.position = 'fixed';
+    canvas.style.left = '0';
+    canvas.style.top = '0';
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.zIndex = '0';
     try {
-        window.canvas.width = window.innerWidth || 0;
-        window.canvas.height = window.innerHeight || 0;
-    } catch (e) {}
+        canvas.width = window.innerWidth || 0;
+        canvas.height = window.innerHeight || 0;
+        console.log(`Canvas resized to: ${canvas.width}x${canvas.height}`);
+    } catch (e) {
+        console.log('Canvas resize error:', e);
+    }
 }
 
 /**
@@ -239,11 +246,21 @@ function resizeCanvasToViewport() {
  */
 async function enterFullscreen() {
     try {
-        const el = document.body || document.documentElement || window.canvas;
-        if (el && el.requestFullscreen) {
+        const el = document.documentElement || document.body;
+        if (!el) return;
+        
+        if (el.requestFullscreen) {
             await el.requestFullscreen({ navigationUI: 'hide' });
+        } else if (el.webkitRequestFullscreen) {
+            await el.webkitRequestFullscreen();
+        } else if (el.mozRequestFullScreen) {
+            await el.mozRequestFullScreen();
+        } else if (el.msRequestFullscreen) {
+            await el.msRequestFullscreen();
         }
-    } catch (e) {}
+    } catch (e) {
+        console.log('Fullscreen not available or blocked:', e.message);
+    }
 }
 
 /**
@@ -251,8 +268,21 @@ async function enterFullscreen() {
  */
 async function exitFullscreen() {
     try {
-        if (document.fullscreenElement) await document.exitFullscreen();
-    } catch (e) {}
+        if (document.fullscreenElement || document.webkitFullscreenElement || 
+            document.mozFullScreenElement || document.msFullscreenElement) {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                await document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                await document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                await document.msExitFullscreen();
+            }
+        }
+    } catch (e) {
+        console.log('Exit fullscreen failed:', e.message);
+    }
 }
 
 /**
@@ -262,9 +292,9 @@ function attachTouchModeListeners() {
     if (_touchResizeHandler || _touchOrientHandler) return;
     _touchResizeHandler = () => {
         if (!window.__touchOverlayOn) return;
+        resizeCanvasToViewport();
         if (isLandscape()) {
             hideRotateOverlay();
-            resizeCanvasToViewport();
         } else {
             showRotateOverlay();
             exitFullscreen();
@@ -295,10 +325,9 @@ async function enableTouchMode() {
     }
     setNoScroll(true);
     saveCanvasStyle();
+    resizeCanvasToViewport();
     if (isLandscape()) {
         hideRotateOverlay();
-        await enterFullscreen();
-        resizeCanvasToViewport();
         attachTouchModeListeners();
     } else {
         showRotateOverlay();
@@ -364,7 +393,10 @@ function _applyTouchOverlayState(on) {
     ensureTouchOverlay();
     ensureRotateOverlay();
     const ov = document.getElementById('touchOverlay');
-    if (ov) ov.style.display = on ? 'block' : 'none';
+    if (ov) {
+        ov.style.display = on ? 'block' : 'none';
+        if (on) resizeCanvasToViewport();
+    }
 }
 
 /**
