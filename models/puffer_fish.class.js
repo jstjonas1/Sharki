@@ -26,7 +26,7 @@ class PufferFish extends Enemy {
      * Load puffer fish animation frames.
      */
     _loadPufferFrames() {
-        const base = 'assets/img/sharki/2enemy/1puffer_fish_3_color_options/1swim/';
+        const base = './assets/img/sharki/2enemy/1puffer_fish_3_color_options/1swim/';
         const paths = ['1_1.png','1_2.png','1_3.png','1_4.png','1_5.png'].map(p => base + p);
         this.loadFrames(paths, 120).catch(() => this.loadImage(base + '1_1.png'));
     }

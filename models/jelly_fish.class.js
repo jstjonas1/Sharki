@@ -27,7 +27,7 @@ class JellyFish extends Enemy {
      * Load jellyfish animation frames.
      */
     _loadJellyfishFrames() {
-        const base = 'assets/img/sharki/2enemy/2jelly_fish/regular_damage/';
+        const base = './assets/img/sharki/2enemy/2jelly_fish/regular_damage/';
         const paths = ['lila1.png','lila2.png','lila3.png','lila4.png'].map(p => base + p);
         this.loadFrames(paths, 140).catch(() => this.loadImage(base + 'lila1.png'));
     }
