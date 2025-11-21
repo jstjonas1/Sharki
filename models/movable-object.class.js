@@ -393,7 +393,7 @@ class MovableObject {
             this._drawMainImage(ctx);
         } else {
             if (!this._tryDrawFromAssetCache(ctx)) {
-                ctx.fillStyle = 'rgba(255,0,0,.25)';
+                ctx.fillStyle = 'rgba(0,0,0,.25)';
                 ctx.fillRect(this.x, this.y, this.width, this.height);
             }
         }
@@ -572,7 +572,7 @@ class MovableObject {
             }
             this._lastDraw = { x: this.x, y: this.y, width: this.width, height: this.height };
         } catch (e2) {
-            ctx.fillStyle = 'rgba(255,0,0,.25)';
+            ctx.fillStyle = 'rgba(0,0,0,.25)';
             ctx.fillRect(this.x, this.y, this.width, this.height);
             this._lastDraw = { x: this.x, y: this.y, width: this.width, height: this.height };
         }
