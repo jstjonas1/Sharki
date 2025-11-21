@@ -166,12 +166,11 @@ class MovableObject {
         this.frames = [];
         this.frameIndex = 0;
         this.frameInterval = frameInterval;
-        try { 
-            if (Array.isArray(paths) && paths.length > 0) { 
-                this._firstFramePath = paths[0]; 
-                try { this.img = new Image(); this.img.src = paths[0]; } catch (e) {} 
-            } 
-        } catch (e) {}
+        if (Array.isArray(paths) && paths.length > 0) { 
+            this._firstFramePath = paths[0]; 
+            this.img = new Image();
+            this.img.src = paths[0];
+        }
     }
 
     /**
@@ -266,11 +265,10 @@ class MovableObject {
      * @param {Array} patternList - Pattern list
      */
     _setFirstFrameGuess(base, patternList) {
-        try {
-            const guess = base + patternList[0].replace('{i}', 1);
-            this._firstFramePath = guess;
-            try { this.img = new Image(); this.img.src = guess; } catch (e) {}
-        } catch (e) {}
+        const guess = base + patternList[0].replace('{i}', 1);
+        this._firstFramePath = guess;
+        this.img = new Image();
+        this.img.src = guess;
     }
 
     /**

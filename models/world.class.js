@@ -107,13 +107,13 @@ class World {
    * Setup keyboard handler for restart.
    */
   _setupKeyboardHandler() {
+    this._kbdHandler = (ev) => {
+      if (!ev) return;
+      if ((ev.key === 'r' || ev.key === 'R') && (this.gameOver || this.victory)) {
+        this.restartGame();
+      }
+    };
     try {
-      this._kbdHandler = (ev) => {
-        if (!ev) return;
-        if ((ev.key === 'r' || ev.key === 'R') && (this.gameOver || this.victory)) {
-          try { this.restartGame(); } catch (e) {}
-        }
-      };
       window.addEventListener('keydown', this._kbdHandler);
     } catch (e) {}
   }
@@ -122,8 +122,8 @@ class World {
    * Setup canvas pointer handler.
    */
   _setupCanvasPointer() {
+    this._onCanvasPointer = (ev) => this._handleCanvasPointer(ev);
     try {
-      this._onCanvasPointer = (ev) => this._handleCanvasPointer(ev);
       this.canvas.addEventListener('pointerdown', this._onCanvasPointer);
     } catch (e) {}
   }
@@ -132,14 +132,13 @@ class World {
    * Position character in canvas center.
    */
   _positionCharacter() {
-    try {
-      const cw = this.canvas.width;
-      const ch = this.canvas.height;
-      const cwid = (this.character && this.character.width) ? this.character.width : 32;
-      const chei = (this.character && this.character.height) ? this.character.height : 48;
-      this.character.x = Math.round((cw - cwid) / 2);
-      this.character.y = Math.round((ch - chei) / 2);
-    } catch (e) {}
+    if (!this.character) return;
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+    const cwid = this.character.width || 32;
+    const chei = this.character.height || 48;
+    this.character.x = Math.round((cw - cwid) / 2);
+    this.character.y = Math.round((ch - chei) / 2);
   }
 
   constructor(canvas, options = {}) {
@@ -197,7 +196,7 @@ class World {
    */
   destroy() {
     try { if (this._kbdHandler) window.removeEventListener('keydown', this._kbdHandler); } catch (e) {}
-  try { if (this._onCanvasPointer) this.canvas.removeEventListener('pointerdown', this._onCanvasPointer); } catch (e) {}
+    try { if (this._onCanvasPointer) this.canvas.removeEventListener('pointerdown', this._onCanvasPointer); } catch (e) {}
     this.running = false;
   }
 
@@ -224,8 +223,8 @@ class World {
     const now = Date.now();
     const dt = now - (this._lastTick || now);
     this._lastTick = now;
-  this.update(dt);
-  this.draw();
+    this.update(dt);
+    this.draw();
     if (this.running) requestAnimationFrame(() => this.gameLoop());
   }
 

@@ -449,15 +449,10 @@ function ensureMobileRotatePrompt() {
     content.className = 'rotate-prompt-content';
     const icon = document.createElement('div');
     icon.className = 'rotate-icon';
-    icon.innerHTML = `
-        <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
-            <path d="M12 18h.01"/>
-        </svg>
-    `;
+    icon.innerHTML = Templates.getRotationIcon();
     const text = document.createElement('div');
     text.className = 'rotate-text';
-    text.innerHTML = '<h2>Bitte drehe dein Gerät</h2><p>Für das beste Spielerlebnis nutze bitte den Querformat-Modus</p>';
+    text.innerHTML = Templates.getRotationPromptContent();
     content.appendChild(icon);
     content.appendChild(text);
     overlay.appendChild(content);

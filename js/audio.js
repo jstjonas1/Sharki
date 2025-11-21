@@ -13,6 +13,7 @@ const SFX = (() => {
     function load(key, src) {
         try { const a = new Audio(src); a.preload = 'auto'; cache[key] = a; } catch (e) {}
     }
+
     /**
      * Play a preloaded sound at the specified volume.
      * @param {string} key Identifier previously loaded with load().
@@ -28,6 +29,7 @@ const SFX = (() => {
             node.play().catch(() => {});
         } catch (e) {}
     }
+
     /**
      * Set the master volume for all sound effects.
      * @param {number} v Volume level in range [0,1].
@@ -37,6 +39,7 @@ const SFX = (() => {
         state.volume = Math.max(0, Math.min(1, nv));
         try { localStorage.setItem('sharkyVolume', String(Math.round(state.volume * 100))); } catch (_) {}
     }
+
     /**
      * Mute or unmute all sound effects.
      * @param {boolean} m True to mute, false to unmute.
@@ -45,25 +48,29 @@ const SFX = (() => {
         state.muted = !!m;
         try { localStorage.setItem('sharkyMuted', state.muted ? '1' : '0'); } catch (_) {}
     }
+
     /**
      * Get the current master volume level.
      * @returns {number} Volume in range [0,1].
      */
     function getVolume() { return Math.max(0, Math.min(1, state.volume || 0)); }
+
     /**
      * Check if sound effects are currently muted.
      * @returns {boolean}
      */
     function isMuted() { return !!state.muted; }
-    
+
     try {
         const mv = parseInt(localStorage.getItem('sharkyVolume') || '100', 10);
         if (!isNaN(mv)) state.volume = Math.max(0, Math.min(1, mv / 100));
         const mm = localStorage.getItem('sharkyMuted');
         if (mm === '1' || mm === '0') state.muted = (mm === '1');
     } catch (_) {}
+
     return { load, play, setVolume, setMuted, getVolume, isMuted };
 })();
+
 window.SFX = SFX;
 
 /**
@@ -88,11 +95,13 @@ const BGM = (() => {
             } catch (e) { audio = null; }
         }
     }
+
     /**
      * Apply current volume and mute settings to audio element.
      * @private
      */
     function _applyVolume() { if (audio) audio.volume = state.muted ? 0 : Math.max(0, Math.min(1, state.volume || 0)); }
+
     /**
      * Ensure background music has started playing.
      * @async
@@ -105,6 +114,7 @@ const BGM = (() => {
             state.started = true;
         } catch (e) { /* likely autoplay blocked */ }
     }
+
     /**
      * Set the background music volume.
      * @param {number} v Volume level in range [0,1].
@@ -115,6 +125,7 @@ const BGM = (() => {
         try { localStorage.setItem('sharkyMusicVolume', String(Math.round(state.volume * 100))); } catch (_) {}
         _applyVolume();
     }
+
     /**
      * Mute or unmute background music.
      * @param {boolean} m True to mute, false to unmute.
@@ -124,16 +135,19 @@ const BGM = (() => {
         try { localStorage.setItem('sharkyMusicMuted', state.muted ? '1' : '0'); } catch (_) {}
         _applyVolume();
     }
+
     /**
      * Check if background music is currently muted.
      * @returns {boolean}
      */
     function isMuted() { return !!state.muted; }
+
     /**
      * Get the current background music volume level.
      * @returns {number} Volume in range [0,1].
      */
     function getVolume() { return Math.max(0, Math.min(1, state.volume || 0)); }
+
     /**
      * Hook event listeners to auto-resume music on user interaction.
      */
@@ -147,13 +161,15 @@ const BGM = (() => {
         try { document.addEventListener('pointerdown', one, { once: true }); } catch (_){ }
         try { document.addEventListener('keydown', one, { once: true }); } catch (_){ }
     }
-    
+
     try {
         const mv = parseInt(localStorage.getItem('sharkyMusicVolume') || '100', 10);
         if (!isNaN(mv)) state.volume = Math.max(0, Math.min(1, mv / 100));
         const mm = localStorage.getItem('sharkyMusicMuted');
         if (mm === '1' || mm === '0') state.muted = (mm === '1');
     } catch (_) {}
+
     return { ensureStarted, setVolume, setMuted, isMuted, getVolume, hookAutoResume };
 })();
+
 window.BGM = BGM;

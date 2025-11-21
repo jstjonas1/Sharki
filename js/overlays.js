@@ -31,31 +31,11 @@ function showHowToOverlay() {
     ov.innerHTML = '';
     const inner = document.createElement('div');
     inner.className = 'howto-inner';
-    inner.innerHTML = _getHowToContent();
+    inner.innerHTML = Templates.getHowToPlayContent();
     ov.appendChild(inner);
     const closeBtn = inner.querySelector('button');
     if (closeBtn) closeBtn.addEventListener('click', () => { ov.style.display = 'none'; });
     ov.style.display = 'flex';
-}
-
-/**
- * Get HTML content for how to play overlay.
- * @returns {string}
- * @private
- */
-function _getHowToContent() {
-    return `
-        <h2>How to play</h2>
-        <ul>
-            <li>Move with Arrow keys or WASD.</li>
-            <li>Shoot a bubble with F (or the on-screen button). Each shot costs 0.5% of your current points.</li>
-            <li>You can only eat fish that are smaller or the same size as you. Touching a bigger fish means Game Over.</li>
-            <li>When the progress bar reaches 100%, the Boss appears. Defeat it by shooting bubbles and don't get hit.</li>
-        </ul>
-        <div class="howto-close">
-            <button>Close</button>
-        </div>
-    `;
 }
 
 /**
@@ -81,18 +61,7 @@ function createGameOverContent() {
  * @private
  */
 function _appendGameOverElements(container, score, secs, diff) {
-    container.innerHTML = `
-        <h2>Game Over</h2>
-        <img class="gameover-img" src="./assets/img/sharki/1sharkie/6dead/1poisoned/9.png" alt="Sharkie Game Over">
-        <div class="gameover-info">Score: ${score} • Time: ${secs}s • ${diff}</div>
-        <div class="gameover-name-wrap">
-            <label class="gameover-name-label">Name for High Score:</label>
-            <input class="gameover-name-input" id="playerName" type="text" maxlength="24">
-        </div>
-        <div class="gameover-btn-row">
-            <button>Confirm</button>
-        </div>
-    `;
+    container.innerHTML = Templates.getGameOverContent(score, secs, diff);
     _restoreSavedPlayerName(container.querySelector('.gameover-name-input'));
 }
 
@@ -101,20 +70,18 @@ function _appendGameOverElements(container, score, secs, diff) {
  * @param {HTMLInputElement} nameInput
  */
 function handleGameOverConfirm(nameInput) {
-    try {
-        const name = (nameInput.value || 'Player').trim();
-        try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
-        const s = window.world ? (window.world.score || 0) : 0;
-        const t = window.world ? (window.world._finalElapsedMs || window.world.elapsedMs || 0) : 0;
-        const d = window.world ? (window.world.difficulty || 'normal') : 'normal';
-        const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
-        if (typeof saveHighscoreRecord === 'function') {
-            saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
-        }
-        try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
-        hideGameOverUI();
-        showHighscoresUI();
-    } catch (e) {}
+    const name = (nameInput.value || 'Player').trim();
+    try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
+    const s = window.world ? (window.world.score || 0) : 0;
+    const t = window.world ? (window.world._finalElapsedMs || window.world.elapsedMs || 0) : 0;
+    const d = window.world ? (window.world.difficulty || 'normal') : 'normal';
+    const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
+    if (typeof saveHighscoreRecord === 'function') {
+        saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
+    }
+    try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
+    hideGameOverUI();
+    showHighscoresUI();
 }
 
 /**
@@ -174,18 +141,7 @@ function _getGameStats() {
  * @private
  */
 function _appendVictoryElements(container, score, secs, diff) {
-    container.innerHTML = `
-        <h2>You Win!</h2>
-        <img class="victory-img" src="./assets/img/sharki/1sharkie/1idle/1.png" alt="Sharkie Victory">
-        <div class="victory-info">Score: ${score} • Time: ${secs}s • ${diff}</div>
-        <div class="victory-name-wrap">
-            <label class="victory-name-label">Name for High Score:</label>
-            <input class="victory-name-input" id="playerNameVictory" type="text" maxlength="24">
-        </div>
-        <div class="victory-btn-row">
-            <button>Confirm</button>
-        </div>
-    `;
+    container.innerHTML = Templates.getVictoryContent(score, secs, diff);
     _restoreSavedPlayerName(container.querySelector('.victory-name-input'));
 }
 
@@ -206,20 +162,18 @@ function _restoreSavedPlayerName(input) {
  * @param {HTMLInputElement} nameInput
  */
 function handleVictoryConfirm(nameInput) {
-    try {
-        const name = (nameInput.value || 'Player').trim();
-        try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
-        const s = window.world ? (window.world.score || 0) : 0;
-        const t = window.world ? (window.world._finalElapsedMs || window.world.elapsedMs || 0) : 0;
-        const d = window.world ? (window.world.difficulty || 'normal') : 'normal';
-        const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
-        if (typeof saveHighscoreRecord === 'function') {
-            saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
-        }
-        try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
-        hideVictoryUI();
-        showHighscoresUI();
-    } catch (e) {}
+    const name = (nameInput.value || 'Player').trim();
+    try { localStorage.setItem('sharkyPlayerName', name); } catch (e) {}
+    const s = window.world ? (window.world.score || 0) : 0;
+    const t = window.world ? (window.world._finalElapsedMs || window.world.elapsedMs || 0) : 0;
+    const d = window.world ? (window.world.difficulty || 'normal') : 'normal';
+    const reported = (d && d.toString().toLowerCase() === 'easy') ? Math.round(s * 0.5) : s;
+    if (typeof saveHighscoreRecord === 'function') {
+        saveHighscoreRecord({ name, score: reported, difficulty: d, timeMs: t, when: Date.now() });
+    }
+    try { if (window.SFX) window.SFX.play('nicescore', 1); } catch (_) {}
+    hideVictoryUI();
+    showHighscoresUI();
 }
 
 /**
@@ -262,14 +216,7 @@ function showHighscoresUI() {
 function _appendHighscoresContent(ov) {
     const inner = document.createElement('div');
     inner.className = 'highscores-inner';
-    inner.innerHTML = `
-        <h3>High Scores</h3>
-        <div id="hsList" class="highscores-list"></div>
-        <div class="highscores-actions">
-            <button id="hsRestartBtn">Restart</button>
-            <button id="hsMenuBtn">Back to Menu</button>
-        </div>
-    `;
+    inner.innerHTML = Templates.getHighscoresContent();
     ov.appendChild(inner);
     _attachHighscoresHandlers();
     _populateHighscoresList();
@@ -328,7 +275,7 @@ function _populateHighscoresList() {
     const data = _getSortedHighscores();
     list.innerHTML = '';
     if (!data.length) {
-        list.innerHTML = '<div class="highscore-empty">-</div>';
+        list.innerHTML = Templates.getEmptyHighscoreItem();
     } else {
         data.forEach((r, i) => _appendHighscoreRow(list, r, i));
     }

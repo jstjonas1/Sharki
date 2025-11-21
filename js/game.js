@@ -200,10 +200,10 @@ function saveGameSettings(mode, difficulty) {
  */
 function destroyWorld() {
     if (world) {
-        try { world.destroy && world.destroy(); } catch (e) {}
-        try { world.running = false; } catch (e) {}
-        try { window.world = null; } catch (e) {}
+        if (world.destroy) world.destroy();
+        world.running = false;
         world = null;
+        window.world = null;
     }
 }
 
@@ -250,7 +250,7 @@ function closeAllOverlays() {
  */
 function createAndConfigureWorld(canvas, mode, difficulty) {
     world = new World(canvas, { autoStart: false });
-    try { window.world = world; } catch (e) {}
+    window.world = world;
     world.difficulty = difficulty;
     if (typeof world.applyDifficultySettings === 'function') world.applyDifficultySettings();
     const dark = (mode === 'dark') || (localStorage.getItem('sharkyDarkMode') === '1');
