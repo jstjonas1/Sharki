@@ -1092,18 +1092,13 @@ class World {
   }
 
   /**
-   * Draw top-right UI buttons (pause and touch toggle).
+   * Draw top-right UI buttons (pause only).
    * @param {CanvasRenderingContext2D} ctx - Canvas context
    */
   _drawTopRightUi(ctx) {
     if (!ctx) return;
-    const hasTouchCapability = this._hasTouchCapability();
-    const {pad, btnH, pauseW, gap, sliderW, x2, y} = this._getTopRightUiLayout();
-    if (hasTouchCapability) {
-      this._drawTopRightWithTouch(ctx, x2, y, pauseW, sliderW, gap, btnH);
-    } else {
-      this._drawTopRightPauseOnly(ctx, x2, y, pauseW, btnH);
-    }
+    const {btnH, pauseW, x2, y} = this._getTopRightUiLayout();
+    this._drawTopRightPauseOnly(ctx, x2, y, pauseW, btnH);
   }
 
   /**
@@ -1113,29 +1108,9 @@ class World {
    */
   _getTopRightUiLayout() {
     return {
-      pad: 10, btnH: 30, pauseW: 70, gap: 10, sliderW: 90,
+      pad: 10, btnH: 30, pauseW: 70,
       x2: this.canvas.width - 10, y: 10
     };
-  }
-
-  /**
-   * Draw top-right UI with touch toggle.
-   * @param {CanvasRenderingContext2D} ctx - Canvas context
-   * @param {number} x2 - Right edge X
-   * @param {number} y - Y position
-   * @param {number} pauseW - Pause button width
-   * @param {number} sliderW - Slider width
-   * @param {number} gap - Gap between buttons
-   * @param {number} btnH - Button height
-   * @private
-   */
-  _drawTopRightWithTouch(ctx, x2, y, pauseW, sliderW, gap, btnH) {
-    const px = x2 - pauseW; const py = y;
-    const sx = px - gap - sliderW; const sy = y;
-    this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
-    this._uiRects.touch = { x: sx, y: sy, w: sliderW, h: btnH };
-    this._drawTouchToggle(ctx, sx, sy, sliderW, btnH);
-    this._drawPauseButton(ctx, px, py, pauseW, btnH);
   }
 
   /**
@@ -1150,85 +1125,7 @@ class World {
   _drawTopRightPauseOnly(ctx, x2, y, pauseW, btnH) {
     const px = x2 - pauseW; const py = y;
     this._uiRects.pause = { x: px, y: py, w: pauseW, h: btnH };
-    this._uiRects.touch = null;
     this._drawPauseButton(ctx, px, py, pauseW, btnH);
-  }
-
-  /**
-   * Check if device has touch capability.
-   * @returns {boolean}
-   */
-  _hasTouchCapability() {
-    try {
-      return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /**
-   * Draw touch toggle slider.
-   * @param {CanvasRenderingContext2D} ctx - Canvas context
-   * @param {number} sx - Slider X
-   * @param {number} sy - Slider Y
-   * @param {number} sliderW - Slider width
-   * @param {number} btnH - Button height
-   */
-  _drawTouchToggle(ctx, sx, sy, sliderW, btnH) {
-    ctx.save();
-    this._drawTouchToggleBackground(ctx, sx, sy, sliderW, btnH);
-    const overlayOn = (typeof window !== 'undefined' && window.__touchOverlayOn) ? true : false;
-    this._drawTouchToggleKnob(ctx, sx, sy, sliderW, btnH, overlayOn);
-    this._drawTouchToggleLabel(ctx, sx, sy, sliderW, btnH, overlayOn);
-    ctx.restore();
-  }
-
-  /**
-   * Draw touch toggle background.
-   * @param {CanvasRenderingContext2D} ctx - Canvas context
-   * @param {number} sx - Slider X
-   * @param {number} sy - Slider Y
-   * @param {number} sliderW - Slider width
-   * @param {number} btnH - Button height
-   * @private
-   */
-  _drawTouchToggleBackground(ctx, sx, sy, sliderW, btnH) {
-    World._roundRect(ctx, sx, sy, sliderW, btnH, 6);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.stroke();
-  }
-
-  /**
-   * Draw touch toggle knob.
-   * @param {CanvasRenderingContext2D} ctx - Canvas context
-   * @param {number} sx - Slider X
-   * @param {number} sy - Slider Y
-   * @param {number} sliderW - Slider width
-   * @param {number} btnH - Button height
-   * @param {boolean} overlayOn - Whether overlay is on
-   * @private
-   */
-  _drawTouchToggleKnob(ctx, sx, sy, sliderW, btnH, overlayOn) {
-    const knobW = Math.round(sliderW * 0.45); const knobPad = 3;
-    const knobX = overlayOn ? (sx + sliderW - knobW - knobPad) : (sx + knobPad);
-    const knobY = sy + knobPad; const knobH = btnH - knobPad * 2;
-    World._roundRect(ctx, knobX, knobY, knobW, knobH, 6);
-    ctx.fillStyle = overlayOn ? '#2ecc71' : '#7f8c8d'; ctx.fill();
-  }
-
-  /**
-   * Draw touch toggle label.
-   * @param {CanvasRenderingContext2D} ctx - Canvas context
-   * @param {number} sx - Slider X
-   * @param {number} sy - Slider Y
-   * @param {number} sliderW - Slider width
-   * @param {number} btnH - Button height
-   * @param {boolean} overlayOn - Whether overlay is on
-   * @private
-   */
-  _drawTouchToggleLabel(ctx, sx, sy, sliderW, btnH, overlayOn) {
-    ctx.fillStyle = 'white'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(overlayOn ? 'Touch: ON' : 'Touch: OFF', sx + sliderW / 2, sy + btnH / 2);
   }
 
   /**
@@ -1250,15 +1147,14 @@ class World {
   }
 
   /**
-   * Handle canvas pointer events (clicking UI buttons).
+   * Handle canvas pointer events (clicking pause button).
    * @param {PointerEvent} ev - Pointer event
    */
   _handleCanvasPointer(ev) {
     try {
-      if (!this._uiRects || (!this._uiRects.pause && !this._uiRects.touch)) return;
+      if (!this._uiRects || !this._uiRects.pause) return;
       const {hit} = this._getPointerCoordinates(ev);
       if (hit(this._uiRects.pause)) return this._handlePauseClick(ev);
-      if (hit(this._uiRects.touch)) return this._handleTouchClick(ev);
     } catch (e) {}
   }
 
@@ -1288,21 +1184,6 @@ class World {
       if (this.paused && typeof window.showPauseOverlay === 'function') window.showPauseOverlay();
       if (!this.paused && typeof window.hidePauseOverlay === 'function') window.hidePauseOverlay();
     } catch (e) {}
-  }
-
-  /**
-   * Handle touch toggle click.
-   * @param {PointerEvent} ev - Pointer event
-   */
-  _handleTouchClick(ev) {
-    ev.preventDefault(); ev.stopPropagation();
-    try {
-      const current = !!window.__touchOverlayOn;
-      const next = !current;
-      try { window.__userAutoDisabled = true; window.__userForcedTouch = next; } catch (e) {}
-      if (typeof window.setTouchOverlayOn === 'function') window.setTouchOverlayOn(next);
-      else window.__touchOverlayOn = next;
-    } catch (e) { window.__touchOverlayOn = !window.__touchOverlayOn; }
   }
 
   /**
@@ -1445,7 +1326,7 @@ class World {
     if (mo.img instanceof Image ? mo.img.complete : false) {
       this.ctx.drawImage(mo.img, mo.x, mo.y, mo.width, mo.height);
     } else {
-    this.ctx.fillStyle = 'rgba(255,0,0,.25)';
+    this.ctx.fillStyle = 'rgba(0,0,0,.25)';
     this.ctx.fillRect(mo.x, mo.y, mo.width, mo.height);
     }
   }

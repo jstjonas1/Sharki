@@ -561,9 +561,21 @@ function setupAllControls() {
     setupDarkModeListeners(document.getElementById('darkToggleInline'), document.getElementById('darkToggle'));
     setupSoundControls(document.getElementById('muteToggleInline'), document.getElementById('volumeRange'), document.getElementById('volLabel'));
     setupMusicControls(document.getElementById('musicMuteToggle'), document.getElementById('musicVolumeRange'), document.getElementById('musicVolLabel'));
-    const touchToggle = document.getElementById('touchToggle');
-    setupTouchToggle(touchToggle);
-    restoreTouchMode(touchToggle);
+    _autoEnableTouchOnCapableDevices();
+}
+
+/**
+ * Automatically enable touch controls on touch-capable devices.
+ * @private
+ */
+function _autoEnableTouchOnCapableDevices() {
+    if (hasTouchCapability()) {
+        window.__userAutoDisabled = false;
+        window.__userForcedTouch = true;
+        if (typeof window.setTouchOverlayOn === 'function') {
+            window.setTouchOverlayOn(true);
+        }
+    }
 }
 
 /**
