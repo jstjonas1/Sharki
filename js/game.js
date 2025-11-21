@@ -504,12 +504,21 @@ function setupMobileDetection() {
         
         if (isMobileDevice && !window.__userAutoDisabled && typeof window.__userForcedTouch === 'undefined') {
             handleMobileOrientation();
-            window.addEventListener('resize', handleMobileOrientation);
+            window.addEventListener('resize', _handleMobileResize);
             window.addEventListener('orientationchange', handleMobileOrientation);
         } else if (!isMobileDevice) {
             hideMobileRotatePrompt();
         }
     } catch (e) {}
+}
+
+/**
+ * Handle resize events on mobile devices.
+ * @private
+ */
+function _handleMobileResize() {
+    handleMobileOrientation();
+    _autoEnableTouchOnCapableDevices();
 }
 
 /**
@@ -565,17 +574,32 @@ function setupAllControls() {
 }
 
 /**
- * Automatically enable touch controls on touch-capable devices.
+ * Automatically enable touch controls on touch-capable devices or small screens.
  * @private
  */
 function _autoEnableTouchOnCapableDevices() {
-    if (hasTouchCapability()) {
+    const isMobileScreen = window.innerWidth <= 1024;
+    if (hasTouchCapability() || isMobileScreen) {
         window.__userAutoDisabled = false;
         window.__userForcedTouch = true;
         if (typeof window.setTouchOverlayOn === 'function') {
             window.setTouchOverlayOn(true);
         }
+        _tryEnterFullscreen();
     }
+}
+
+/**
+ * Try to enter fullscreen mode.
+ * @private
+ */
+function _tryEnterFullscreen() {
+    try {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen && !document.fullscreenElement) {
+            elem.requestFullscreen().catch(() => {});
+        }
+    } catch (e) {}
 }
 
 /**
@@ -1346,23 +1370,45 @@ function detachTouchModeListeners() {
      * Toggle the touch overlay, fullscreen behavior and orientation enforcement.
      * @param {boolean} on
      */
+    /**
+     * Check if touch mode is allowed based on capabilities and screen size.
+     * @param {boolean} on
+     * @returns {boolean}
+     * @private
+     */
+    function _isTouchModeAllowed(on) {
+        if (!on) return true;
+        const isMobileScreen = window.innerWidth <= 1024;
+        return hasTouchCapability() || isMobileScreen;
+    }
+    
+    /**
+     * Toggle the touch overlay, fullscreen behavior and orientation enforcement.
+     * @param {boolean} on
+     */
     async function setTouchOverlayOn(on) {
-        if (on && !hasTouchCapability()) {
-            console.log('Cannot enable touch mode: device has no touch capability');
+        if (!_isTouchModeAllowed(on)) {
+            console.log('Cannot enable touch mode: no touch capability and not mobile screen');
             window.__touchOverlayOn = false;
             try { const t = document.getElementById('touchToggle'); if (t) t.checked = false; } catch (e) {}
             return;
         }
+        _applyTouchOverlayState(on);
+        if (on) await enableTouchMode(); else await disableTouchMode();
+    }
+    
+    /**
+     * Apply touch overlay state to UI elements.
+     * @param {boolean} on
+     * @private
+     */
+    function _applyTouchOverlayState(on) {
         window.__touchOverlayOn = !!on;
         try { const t = document.getElementById('touchToggle'); if (t) t.checked = !!on; } catch (e) {}
+        ensureTouchOverlay();
         ensureRotateOverlay();
         const ov = document.getElementById('touchOverlay');
         if (ov) ov.style.display = on ? 'block' : 'none';
-        if (on) {
-            await enableTouchMode();
-        } else {
-            await disableTouchMode();
-        }
     }
     
     /**
