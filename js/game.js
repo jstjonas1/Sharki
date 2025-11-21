@@ -356,8 +356,20 @@ function startGame() {
     saveGameSettings(mode, difficulty);
     closeAllOverlays();
     destroyWorld();
+    _showGameUI();
     createAndConfigureWorld(canvas, mode, difficulty);
     hideStartMenu();
+}
+
+/**
+ * Show game canvas and controls.
+ * @private
+ */
+function _showGameUI() {
+    const canvas = document.getElementById('gameCanvas');
+    const controls = document.getElementById('controls');
+    if (canvas) canvas.style.display = 'block';
+    if (controls) controls.style.display = 'block';
 }
 
 /**
